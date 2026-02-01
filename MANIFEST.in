@@ -1,0 +1,2 @@
+graft myapp
+global-exclude *.py[co]
