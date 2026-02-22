@@ -1,2 +1,2 @@
-from myapp import models
+from ADB import models
 import pytest

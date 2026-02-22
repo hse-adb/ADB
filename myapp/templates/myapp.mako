@@ -2,7 +2,7 @@
 
 <%block name="header">
     ##<a href="${request.route_url('dataset')}">
-    ##    <img src="${request.static_url('myapp:static/header.gif')}"/>
+    ##    <img src="${request.static_url('ADB:static/header.gif')}"/>
     ##</a>
 </%block>
 

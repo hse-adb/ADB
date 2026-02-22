@@ -1,95 +1,75 @@
-import csv
-from pathlib import Path
+import itertools
+import collections
 
-from clld.cliutil import Data
+from clldutils.misc import nfilter
+from clldutils.color import qualitative_colors
+from clld.cliutil import Data, bibtex2source
+from clld.db.meta import DBSession
 from clld.db.models import common
+from clld.lib import bibtex
 
-import myapp
-from myapp import models
+from pycldf import Sources
 
 
-def _csv_rows(path):
-    with path.open(encoding="utf8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if not row:
-                continue
-            yield {k: (v.strip() if isinstance(v, str) else v) for k, v in row.items()}
+import ADB
+from ADB import models
 
 
 def main(args):
     data = Data()
-
     data.add(
         common.Dataset,
-        myapp.__name__,
-        id=myapp.__name__,
-        domain="localhost",
-        publisher_name="",
-        publisher_place="",
-        publisher_url="",
-        license="http://creativecommons.org/licenses/by/4.0/",
+        ADB.__name__,
+        id=ADB.__name__,
+        domain='localhost',
+
+        publisher_name = "",
+        publisher_place = "",
+        publisher_url = "",
+        license = "http://creativecommons.org/licenses/by/4.0/",
+        jsondata = {
+            'license_icon': 'cc-by.png',
+            'license_name': 'Creative Commons Attribution 4.0 International License'},
+
     )
+
 
     contrib = data.add(
         common.Contribution,
-        "c1",
-        id="c1",
-        name="ADB",
+        None,
+        id='cldf',
+        name=args.cldf.properties.get('dc:title'),
+        description=args.cldf.properties.get('dc:bibliographicCitation'),
     )
 
-    data_dir = Path(__file__).parent.parent / "data"
-
-    def _as_float(x):
-        x = (x or "").strip()
-        return float(x) if x else None
-
-    for row in _csv_rows(data_dir / "languages.csv"):
+    for lang in args.cldf.iter_rows('LanguageTable', 'id', 'glottocode', 'name', 'latitude', 'longitude'):
         data.add(
             models.Variety,
-            row["ID"],
-            id=row["ID"],
-            name=row["Name"],
-            latitude=_as_float(row.get("Latitude")),
-            longitude=_as_float(row.get("Longitude")),
+            lang['id'],
+            id=lang['id'],
+            name=lang['name'],
+            latitude=lang['latitude'],
+            longitude=lang['longitude'],
+            glottocode=lang['glottocode'],
         )
 
-    for row in _csv_rows(data_dir / "parameters.csv"):
-        data.add(
-            models.Feature,
-            row["ID"],
-            id=row["ID"],
-            name=row["Name"],
-        )
+    for rec in bibtex.Database.from_file(args.cldf.bibpath, lowercase=True):
+        data.add(common.Source, rec.id, _obj=bibtex2source(rec))
 
-    for row in _csv_rows(data_dir / "values.csv"):
-        lid = row["Language_ID"]
-        pid = row["Parameter_ID"]
+    refs = collections.defaultdict(list)
 
-        matrix = {}
-        for k, v in row.items():
-            if k in {"ID", "Language_ID", "Parameter_ID"}:
-                continue
-            matrix[k] = 1 if str(v).strip() == "1" else 0
 
-        vs = data.add(
-            common.ValueSet,
-            f"{lid}-{pid}",
-            id=f"{lid}-{pid}",
-            language=data["Variety"][lid],
-            parameter=data["Feature"][pid],
-            contribution=contrib,
-            jsondata=matrix,
-        )
+    for (vsid, sid), pages in refs.items():
+        DBSession.add(common.ValueSetReference(
+            valueset=data['ValueSet'][vsid],
+            source=data['Source'][sid],
+            description='; '.join(nfilter(pages))
+        ))
 
-        data.add(
-            common.Value,
-            row["ID"],
-            id=row["ID"],
-            name="",
-            valueset=vs,
-        )
 
 
 def prime_cache(args):
-    pass
+    """If data needs to be denormalized for lookup, do that here.
+    This procedure should be separate from the db initialization, because
+    it will have to be run periodically whenever data has been updated.
+    """
