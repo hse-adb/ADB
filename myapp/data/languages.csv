@@ -1,4 +1,4 @@
-ID,Name,Macroarea,Latitude,Longitude,Glottocode,ISO639P3code,Family_name,Family_level_ID
-bak,Bashkir,,"53.60","56.56",bash1264,bak,Turkic,turk1311
-mrj,Western Mari,,"56.22","46.57",west2392,mrj,Uralic,ural1272
-sjd,Kildin Saami,,"68.22","35.83",kild1236,sjd,Uralic,ural1272
+language_id,Name,Macroarea,Latitude,Longitude,Glottocode,ISO639P3code,Family_name,Family_level_ID
+1,Bashkir,,"53.60","56.56",bash1264,bak,Turkic,turk1311
+2,Western Mari,,"56.22","46.57",west2392,mrj,Uralic,ural1272
+3,Kildin Saami,,"68.22","35.83",kild1236,sjd,Uralic,ural1272
