@@ -6,7 +6,7 @@ from clld.web.icon import MapMarker
 from clldutils.svg import pie, icon, data_url
 
 # we must make sure custom models are known at database initialization!
-from myapp import models
+from ADB import models
 
 
 
