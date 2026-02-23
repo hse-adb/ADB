@@ -8,7 +8,7 @@ from clld.db.meta import DBSession
 from clld.db.models import common
 from clld.lib import bibtex
 
-from pycldf import Sources
+from pycldf import Dataset, Sources
 
 
 import ADB
@@ -17,6 +17,8 @@ from ADB import models
 
 def main(args):
     data = Data()
+    ds = args.cldf #Dataset.from_metadata(args.cldf)
+
     data.add(
         common.Dataset,
         ADB.__name__,
@@ -38,33 +40,90 @@ def main(args):
         common.Contribution,
         None,
         id='cldf',
-        name=args.cldf.properties.get('dc:title'),
-        description=args.cldf.properties.get('dc:bibliographicCitation'),
+        name=ds.properties.get('dc:title'), #args.cldf.properties.get('dc:title'),
+        description=ds.properties.get('dc:bibliographicCitation'), #args.cldf.properties.get('dc:bibliographicCitation'),
     )
 
-    for lang in args.cldf.iter_rows('LanguageTable', 'id', 'glottocode', 'name', 'latitude', 'longitude'):
+    for lang in ds['LanguageTable'].iterdicts():
+            #in args.cldf.iter_rows('LanguageTable', 'id', 'glottocode', 'name', 'latitude', 'longitude'):
         data.add(
             models.Variety,
-            lang['id'],
-            id=lang['id'],
-            name=lang['name'],
-            latitude=lang['latitude'],
-            longitude=lang['longitude'],
-            glottocode=lang['glottocode'],
+            lang['language_id'],
+            id=lang['language_id'],
+            name=lang['Name'],
+            latitude=lang['Latitude'],
+            longitude=lang['Longitude'],
+            glottocode=lang['Glottocode'],
+            family_name=lang['Family_name'],
+            family_level_id=lang['Family_level_ID'],
         )
+    
+    for row in ds['frames.csv'].iterdicts():
+        data.add(
+            models.Frame,
+            row['frame_id'],
+            id=row['frame_id'],
+            name=row['frame']
+        )
+    
+    for row in ds['groups.csv'].iterdicts():
+        variety = data['Variety'][row['language_id']]
+        frame = data['Frame'][row['frame_id']]
+        data.add(
+            models.Group,
+            row['group_id'],
+            id=row['group_id'],
+            variety=variety,
+            frame=frame,
+            term=row['term'],
+        )
+    
+    for row in ds['lexemes.csv'].iterdicts():
+        group = data['Group'][row['group_id']]
+        data.add(
+            models.Lexeme,
+            row['lexeme_id'],
+            id=row['lexeme_id'],
+            group=group,
+            lexeme=row['lexeme'],
+        )
+    
+    for row in ds['meanings.csv'].iterdicts():
+        data.add(
+            models.Meaning,
+            row['meaning_id'],
+            id=row['meaning_id'],
+            name=row['meaning'],
+        )
+    
+    # lexeme-to-meanings relation
+    for row in ds['lexeme_meaning.csv'].iterdicts():
+        lexeme = data['Lexeme'][row['lexeme_id']]
+        meaning = data['Meaning'][row['meaning_id']]
+        # Insert a record into the association table
+        DBSession.execute(
+            models.lexeme_meaning.insert().values(
+                lexeme_pk=lexeme.pk,
+                meaning_pk=meaning.pk,
+                # example_pk=...
+            )
+        )
+    
+    if ds.bibpath:
+        for rec in bibtex.Database.from_file(ds.bibpath, lowercase=True):
+            data.add(common.Source, rec.id, _obj=bibtex2source(rec))
+    
+    DBSession.flush()
 
-    for rec in bibtex.Database.from_file(args.cldf.bibpath, lowercase=True):
-        data.add(common.Source, rec.id, _obj=bibtex2source(rec))
-
-    refs = collections.defaultdict(list)
+    # refs = collections.defaultdict(list)
 
 
-    for (vsid, sid), pages in refs.items():
-        DBSession.add(common.ValueSetReference(
-            valueset=data['ValueSet'][vsid],
-            source=data['Source'][sid],
-            description='; '.join(nfilter(pages))
-        ))
+    # for (vsid, sid), pages in refs.items():
+    #     DBSession.add(common.ValueSetReference(
+    #         valueset=data['ValueSet'][vsid],
+    #         source=data['Source'][sid],
+    #         description='; '.join(nfilter(pages))
+    #     ))
 
 
 

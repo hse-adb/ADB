@@ -8,7 +8,7 @@
   "dc:conformsTo": "http://cldf.clld.org/v1.0/terms.rdf#Generic",
   "tables": [
     {
-      "url": "language.csv",
+      "url": "languages.csv",
       "dc:conformsTo": "http://cldf.clld.org/v1.0/terms.rdf#LanguageTable",
       "tableSchema": {
         "columns": [
