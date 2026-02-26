@@ -93,7 +93,7 @@
           {
             "columnReference": "language_id",
             "reference": {
-              "resource": "language.csv",
+              "resource": "languages.csv",
               "columnReference": "language_id"
             }
           },
@@ -141,6 +141,10 @@
           {
             "name": "meaning_id",
             "required": true
+          },
+          {
+            "name": "order",
+            "datatype": "integer"
           },
           {
             "name": "meaning"

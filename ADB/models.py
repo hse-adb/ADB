@@ -17,6 +17,8 @@ from clld import interfaces
 from clld.db.meta import Base, CustomModelMixin
 from clld.db.models import common
 
+from ADB import interfaces as adb_interfaces
+
 #-----------------------------------------------------------------------------
 # specialized common mapper classes
 #-----------------------------------------------------------------------------
@@ -28,11 +30,13 @@ class Variety(CustomModelMixin, common.Language):
     family_name = Column(String)
     family_level_id = Column(String)
 
+@implementer(adb_interfaces.IFrame)
 class Frame(Base):
     __tablename__ = 'frame'
     id = Column(String, unique=True, nullable=False)
     name = Column(String)   # the frame description
 
+@implementer(adb_interfaces.IGroup)
 class Group(Base):
     __tablename__ = 'group'
     id = Column(String, unique=True, nullable=False)
@@ -41,18 +45,24 @@ class Group(Base):
     term = Column(String)
     # Relationships for easy navigation
     variety = relationship('Variety')
-    frame = relationship('Frame')
+    frame = relationship('Frame', backref=backref('groups'))
+
+    @hybrid_property
+    def name(self):
+        return self.term
 
 class Lexeme(Base):
     __tablename__ = 'lexeme'
     id = Column(String, unique=True, nullable=False)
     group_pk = Column(Integer, ForeignKey('group.pk'))
     lexeme = Column(String)
-    group = relationship('Group')
+    group = relationship('Group', backref=backref('lexemes'))
+    meanings = relationship('Meaning', secondary='lexeme_meaning', backref=backref('lexemes'))
 
 class Meaning(Base):
     __tablename__ = 'meaning'
     id = Column(String, unique=True, nullable=False)
+    order = Column(Integer)
     name = Column(String)   # the meaning description
 
 # Many‑to‑many association table
