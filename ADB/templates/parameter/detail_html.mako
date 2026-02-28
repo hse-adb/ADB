@@ -31,7 +31,7 @@ vss = sorted(vss, key=lambda vs: (vs.language.name or vs.language.id).lower())
 
 <h2>${ctx.name}</h2>
 
-<table id="matrix" class="table table-striped table-condensed">
+<table class="table table-striped table-condensed js-table-search-sort">
   <thead>
     <tr>
       <th>Язык</th>
@@ -52,11 +52,3 @@ vss = sorted(vss, key=lambda vs: (vs.language.name or vs.language.id).lower())
   </tbody>
 </table>
 
-<script>
-$(function () {
-  $('#matrix').DataTable({
-    paging: true,
-    searching: true
-  });
-});
-</script>

@@ -9,7 +9,7 @@
     </div>
 </%def>
 
-<h2>Welcome to ADB</h2>
+<h2>ADB</h2>
 
 <p class="lead">
     Abstract.

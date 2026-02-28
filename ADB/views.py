@@ -1,1 +1,2 @@
-#
+def includeme(config):
+    pass

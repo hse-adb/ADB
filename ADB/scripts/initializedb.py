@@ -89,10 +89,12 @@ def main(args):
         )
     
     for row in ds['meanings.csv'].iterdicts():
+        order = row.get('order')
         data.add(
             models.Meaning,
             row['meaning_id'],
             id=row['meaning_id'],
+            order=int(order) if order not in [None, ''] else None,
             name=row['meaning'],
         )
     
@@ -100,14 +102,7 @@ def main(args):
     for row in ds['lexeme_meaning.csv'].iterdicts():
         lexeme = data['Lexeme'][row['lexeme_id']]
         meaning = data['Meaning'][row['meaning_id']]
-        # Insert a record into the association table
-        DBSession.execute(
-            models.lexeme_meaning.insert().values(
-                lexeme_pk=lexeme.pk,
-                meaning_pk=meaning.pk,
-                # example_pk=...
-            )
-        )
+        lexeme.meanings.append(meaning)
     
     if ds.bibpath:
         for rec in bibtex.Database.from_file(ds.bibpath, lowercase=True):
