@@ -1,0 +1,188 @@
+{
+  "@context": [
+    "http://www.w3.org/ns/csvw",
+    {
+      "@language": "en"
+    }
+  ],
+  "dc:conformsTo": "http://cldf.clld.org/v1.0/terms.rdf#Generic",
+  "tables": [
+    {
+      "url": "languages.csv",
+      "dc:conformsTo": "http://cldf.clld.org/v1.0/terms.rdf#LanguageTable",
+      "tableSchema": {
+        "columns": [
+          {
+            "name": "language_id",
+            "required": true,
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#id"
+          },
+          {
+            "name": "Name",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#name"
+          },
+          {
+            "name": "Macroarea"
+          },
+          {
+            "name": "Latitude",
+            "datatype": "decimal",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#latitude"
+          },
+          {
+            "name": "Longitude",
+            "datatype": "decimal",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#longitude"
+          },
+          {
+            "name": "Glottocode",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#glottocode"
+          },
+          {
+            "name": "ISO639P3code",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#iso639P3code"
+          },
+          {
+            "name": "Family_name"
+          },
+          {
+            "name": "Family_level_ID"
+          }
+        ],
+        "primaryKey": "language_id",
+        "foreignKeys": []
+      }
+    },
+    {
+      "url": "frames.csv",
+      "tableSchema": {
+        "columns": [
+          {
+            "name": "frame_id",
+            "required": true,
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#id"
+          },
+          {
+            "name": "frame"
+          }
+        ],
+        "primaryKey": "frame_id",
+        "foreignKeys": []
+      }
+    },
+    {
+      "url": "groups.csv",
+      "tableSchema": {
+        "columns": [
+          {
+            "name": "group_id",
+            "required": true
+          },
+          {
+            "name": "language_id"
+          },
+          {
+            "name": "frame_id"
+          },
+          {
+            "name": "term"
+          }
+        ],
+        "primaryKey": "group_id",
+        "foreignKeys": [
+          {
+            "columnReference": "language_id",
+            "reference": {
+              "resource": "languages.csv",
+              "columnReference": "language_id"
+            }
+          },
+          {
+            "columnReference": "frame_id",
+            "reference": {
+              "resource": "frames.csv",
+              "columnReference": "frame_id"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "url": "lexemes.csv",
+      "tableSchema": {
+        "columns": [
+          {
+            "name": "lexeme_id",
+            "required": true
+          },
+          {
+            "name": "group_id"
+          },
+          {
+            "name": "lexeme"
+          }
+        ],
+        "primaryKey": "lexeme_id",
+        "foreignKeys": [
+          {
+            "columnReference": "group_id",
+            "reference": {
+              "resource": "groups.csv",
+              "columnReference": "group_id"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "url": "meanings.csv",
+      "tableSchema": {
+        "columns": [
+          {
+            "name": "meaning_id",
+            "required": true
+          },
+          {
+            "name": "order",
+            "datatype": "integer"
+          },
+          {
+            "name": "meaning"
+          }
+        ],
+        "primaryKey": "meaning_id",
+        "foreignKeys": []
+      }
+    },
+    {
+      "url": "lexeme_meaning.csv",
+      "tableSchema": {
+        "columns": [
+          {
+            "name": "lexeme_id"
+          },
+          {
+            "name": "meaning_id"
+          }
+        ],
+        "primaryKey": ["lexeme_id", "meaning_id"],
+        "foreignKeys": [
+          {
+            "columnReference": "lexeme_id",
+            "reference": {
+              "resource": "lexemes.csv",
+              "columnReference": "lexeme_id"
+            }
+          },
+          {
+            "columnReference": "meaning_id",
+            "reference": {
+              "resource": "meanings.csv",
+              "columnReference": "meaning_id"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

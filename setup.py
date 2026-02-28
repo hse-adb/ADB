@@ -2,9 +2,9 @@ from setuptools import setup, find_packages
 
 
 setup(
-    name='myapp',
+    name='ADB',
     version='0.0',
-    description='myapp',
+    description='ADB',
     classifiers=[
         "Programming Language :: Python",
         "Framework :: Pyramid",
@@ -35,8 +35,8 @@ extras_require={
             'zope.component>=3.11.0',
         ],
     },
-    test_suite="myapp",
+    test_suite="ADB",
     entry_points="""\
     [paste.app_factory]
-    main = myapp:main
+    main = ADB:main
 """)
