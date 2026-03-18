@@ -96,18 +96,25 @@ if language is not None:
   </p>
   % for group in groups:
     <h4>${h.link(req, group, label=group.term)}</h4>
-    <table class="table table-striped table-condensed js-table-search-sort">
+    <table class="table table-striped table-condensed js-table-search-sort" style="table-layout: fixed; width: 100%;">
+      <colgroup>
+        <col style="width: 35%;">
+        <col style="width: 40%;">
+        <col style="width: 25%;">
+      </colgroup>
       <thead>
         <tr>
           <th>Lexeme</th>
+          <th>Meaning</th>
           <th>A-class</th>
         </tr>
       </thead>
       <tbody>
         % for lex in sorted(group.lexemes, key=lambda item: item.lexeme):
           <tr>
-            <td>${lex.lexeme}</td>
-            <td>${fmt_values(lex.meanings)}</td>
+            <td style="vertical-align: middle;">${lex.lexeme}</td>
+            <td style="vertical-align: middle;">${lex.russian or ''}</td>
+            <td style="vertical-align: middle; white-space: nowrap;">${fmt_values(lex.meanings)}</td>
           </tr>
         % endfor
       </tbody>

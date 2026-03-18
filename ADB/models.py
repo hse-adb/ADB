@@ -34,7 +34,7 @@ class Variety(CustomModelMixin, common.Language):
 class Frame(Base):
     __tablename__ = 'frame'
     id = Column(String, unique=True, nullable=False)
-    name = Column(String)   # the frame description
+    name = Column(String)
 
 @implementer(adb_interfaces.IGroup)
 class Group(Base):
@@ -43,7 +43,6 @@ class Group(Base):
     variety_pk = Column(Integer, ForeignKey('variety.pk'))
     frame_pk = Column(Integer, ForeignKey('frame.pk'))
     term = Column(String)
-    # Relationships for easy navigation
     variety = relationship('Variety')
     frame = relationship('Frame', backref=backref('groups'))
 
@@ -56,6 +55,7 @@ class Lexeme(Base):
     id = Column(String, unique=True, nullable=False)
     group_pk = Column(Integer, ForeignKey('group.pk'))
     lexeme = Column(String)
+    russian = Column(String)
     group = relationship('Group', backref=backref('lexemes'))
     meanings = relationship('Meaning', secondary='lexeme_meaning', backref=backref('lexemes'))
 
@@ -63,9 +63,8 @@ class Meaning(Base):
     __tablename__ = 'meaning'
     id = Column(String, unique=True, nullable=False)
     order = Column(Integer)
-    name = Column(String)   # the meaning description
+    name = Column(String)
 
-# Many‑to‑many association table
 lexeme_meaning = Table(
     'lexeme_meaning',
     Base.metadata,

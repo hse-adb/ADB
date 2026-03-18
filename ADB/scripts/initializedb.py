@@ -1,15 +1,7 @@
-import itertools
-import collections
-
-from clldutils.misc import nfilter
-from clldutils.color import qualitative_colors
 from clld.cliutil import Data, bibtex2source
 from clld.db.meta import DBSession
 from clld.db.models import common
 from clld.lib import bibtex
-
-from pycldf import Dataset, Sources
-
 
 import ADB
 from ADB import models
@@ -17,7 +9,7 @@ from ADB import models
 
 def main(args):
     data = Data()
-    ds = args.cldf #Dataset.from_metadata(args.cldf)
+    ds = args.cldf
 
     data.add(
         common.Dataset,
@@ -51,6 +43,7 @@ def main(args):
             lang['language_id'],
             id=lang['language_id'],
             name=lang['Name'],
+            iso_code=lang.get('ISO639P3code'),
             latitude=lang['Latitude'],
             longitude=lang['Longitude'],
             glottocode=lang['Glottocode'],
@@ -86,6 +79,7 @@ def main(args):
             id=row['lexeme_id'],
             group=group,
             lexeme=row['lexeme'],
+            russian=row.get('russian'),
         )
     
     for row in ds['meanings.csv'].iterdicts():
@@ -100,8 +94,12 @@ def main(args):
     
     # lexeme-to-meanings relation
     for row in ds['lexeme_meaning.csv'].iterdicts():
-        lexeme = data['Lexeme'][row['lexeme_id']]
-        meaning = data['Meaning'][row['meaning_id']]
+        lexeme_id = row.get('lexeme_id')
+        meaning_id = row.get('meaning_id')
+        if not lexeme_id or not meaning_id:
+            continue
+        lexeme = data['Lexeme'][lexeme_id]
+        meaning = data['Meaning'][meaning_id]
         lexeme.meanings.append(meaning)
     
     if ds.bibpath:
@@ -109,17 +107,6 @@ def main(args):
             data.add(common.Source, rec.id, _obj=bibtex2source(rec))
     
     DBSession.flush()
-
-    # refs = collections.defaultdict(list)
-
-
-    # for (vsid, sid), pages in refs.items():
-    #     DBSession.add(common.ValueSetReference(
-    #         valueset=data['ValueSet'][vsid],
-    #         source=data['Source'][sid],
-    #         description='; '.join(nfilter(pages))
-    #     ))
-
 
 
 def prime_cache(args):

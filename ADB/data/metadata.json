@@ -120,6 +120,9 @@
           },
           {
             "name": "lexeme"
+          },
+          {
+            "name": "russian"
           }
         ],
         "primaryKey": "lexeme_id",
