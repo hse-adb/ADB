@@ -26,6 +26,7 @@ from ADB import interfaces as adb_interfaces
 @implementer(interfaces.ILanguage)
 class Variety(CustomModelMixin, common.Language):
     pk = Column(Integer, ForeignKey('language.pk'), primary_key=True)
+    iso639p3code = Column(String)
     glottocode = Column(Unicode)
     family_name = Column(String)
     family_level_id = Column(String)

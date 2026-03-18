@@ -10,7 +10,7 @@ import ADB
 from clld.web.maps import LanguageMap
 from ADB import models
 
-iso_code = (ctx.iso_code or '').strip().lower()
+iso_code = (ctx.iso639p3code or ctx.iso_code or '').strip().lower()
 if not iso_code:
     languages_path = Path(ADB.__file__).parent / 'data' / 'languages.csv'
     if languages_path.exists():

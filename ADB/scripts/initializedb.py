@@ -43,7 +43,7 @@ def main(args):
             lang['language_id'],
             id=lang['language_id'],
             name=lang['Name'],
-            iso_code=lang.get('ISO639P3code'),
+            iso639p3code=lang.get('ISO639P3code'),
             latitude=lang['Latitude'],
             longitude=lang['Longitude'],
             glottocode=lang['Glottocode'],
