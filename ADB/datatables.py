@@ -1,4 +1,5 @@
 from sqlalchemy.orm import joinedload
+from sqlalchemy import and_
 from clld.web.datatables.base import DataTable, IdCol, LinkCol, Col
 from clld.web.util.helpers import link
 
@@ -30,9 +31,9 @@ class Languagegroups(DataTable):
     @staticmethod
     def _id_sort_key(value):
         try:
-            return (0, int(value))
+            return 0, int(value)
         except (TypeError, ValueError):
-            return (1, str(value))
+            return 1, str(value)
 
     def _fmt_values(self, meaning_objs):
         if not meaning_objs:
@@ -48,6 +49,18 @@ class Languagegroups(DataTable):
             for meaning in lex.meanings:
                 by_pk[meaning.pk] = meaning
         return self._fmt_values(by_pk.values())
+
+    class AClassCol(Col):
+        def search(self, qs):
+            normalized = (qs or '').replace('<', ' ').replace('>', ' ').replace(',', ' ')
+            tokens = [t.strip() for t in normalized.split() if t.strip()]
+            if not tokens:
+                return None
+            return and_(*[
+                models.Group.lexemes.any(
+                    models.Lexeme.meanings.any(models.Meaning.name.ilike('%{}%'.format(token)))
+                ) for token in tokens
+            ])
 
     def base_query(self, query):
         query = query.join(models.Frame).options(
@@ -82,7 +95,7 @@ class Languagegroups(DataTable):
                 model_col=models.Group.term,
                 format=lambda item: link(self.req, item, label=item.term),
             ),
-            Col(
+            self.AClassCol(
                 self,
                 'aclass',
                 sTitle='A-class',
