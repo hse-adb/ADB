@@ -1,7 +1,7 @@
 <%inherit file="../app.mako"/>
 <%! active_menu_item = "frames" %>
 
-<%block name="title">${ctx.name}</%block>
+<%block name="title">${ctx.frame}</%block>
 
 <%
 from clld.db.meta import DBSession
@@ -63,7 +63,7 @@ if language is not None:
     )
 %>
 
-<h2>${ctx.name}</h2>
+<h2>${ctx.frame}</h2>
 
 % if frame_map and language is None:
   ${frame_map.render()}

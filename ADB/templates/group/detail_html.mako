@@ -23,7 +23,7 @@ def fmt_values(meaning_objs):
 <h2>${ctx.term}</h2>
 
 <p>
-  <strong>Frame:</strong> ${h.link(req, ctx.frame)}
+  <strong>Frame:</strong> ${h.link(req, ctx.frame, label=ctx.frame.frame)}
 </p>
 <p>
   <strong>Language:</strong> ${h.link(req, ctx.variety)}

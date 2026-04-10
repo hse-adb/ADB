@@ -71,6 +71,38 @@
       }
     },
     {
+      "url": "frames_concepticon.csv",
+      "tableSchema": {
+        "columns": [
+          {
+            "name": "frame_id",
+            "required": true
+          },
+          {
+            "name": "concepticon_id",
+            "datatype": "integer"
+          },
+          {
+            "name": "concepticon"
+          }
+        ],
+        "primaryKey": [
+          "frame_id",
+          "concepticon_id",
+          "concepticon"
+        ],
+        "foreignKeys": [
+          {
+            "columnReference": "frame_id",
+            "reference": {
+              "resource": "frames.csv",
+              "columnReference": "frame_id"
+            }
+          }
+        ]
+      }
+    },
+    {
       "url": "groups.csv",
       "tableSchema": {
         "columns": [
