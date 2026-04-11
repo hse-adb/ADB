@@ -1,11 +1,16 @@
 from sqlalchemy.orm import joinedload, subqueryload
-from sqlalchemy import and_, func, distinct
+from sqlalchemy import and_, func, distinct, cast, Integer
 from clld.web.datatables.base import DataTable, Col
 from clld.web.util.helpers import link
 from clld.web.util.htmllib import HTML, literal
 
 from ADB import models
 from clld.db.meta import DBSession
+
+
+class IntegerIdCol(Col):
+    def order(self):
+        return cast(self.model_col, Integer)
 
 
 class Frames(DataTable):
@@ -18,11 +23,11 @@ class Frames(DataTable):
 
     def _fmt_values(self, meaning_objs):
         if not meaning_objs:
-            return "&lt;&gt;"
+            return "&mdash;"
         ordered = sorted(meaning_objs, key=lambda item: self._id_sort_key(item.id))
         left = [m.name for m in ordered if m.order == 1]
         right = [m.name for m in ordered if m.order == 2]
-        return "&lt;{}, {}&gt;".format(" ".join(left), " ".join(right))
+        return "&lt;{}, {}&gt;".format(" ".join(left) or "&mdash;", " ".join(right) or "&mdash;")
 
     @property
     def languages(self):
@@ -62,13 +67,15 @@ class Frames(DataTable):
             super().__init__(
                 dt,
                 'lang_{}'.format(language.id),
-                sTitle=language.name,
+                sTitle=str(link(dt.req, language, label=language.name)),
                 model_col=None,
                 input_size='mini',
             )
 
         def format(self, item):
-            value = self.dt._frame_values(item).get(self.language.pk, "&lt;&gt;")
+            value = self.dt._frame_values(item).get(self.language.pk, "&mdash;")
+            if value == "&mdash;":
+                return literal(value)
             return HTML.a(
                 literal(value),
                 href=self.dt.req.route_url('frame', id=item.id, _query={'language': self.language.id}),
@@ -88,7 +95,7 @@ class Frames(DataTable):
 
     def col_defs(self):
         cols = [
-            Col(
+            IntegerIdCol(
                 self,
                 'frame_id',
                 sTitle='Id',
@@ -129,11 +136,11 @@ class Languagegroups(DataTable):
 
     def _fmt_values(self, meaning_objs):
         if not meaning_objs:
-            return "&lt;&gt;"
+            return "&mdash;"
         ordered = sorted(meaning_objs, key=lambda item: self._id_sort_key(item.id))
         left = [m.name for m in ordered if m.order == 1]
         right = [m.name for m in ordered if m.order == 2]
-        return "&lt;{}, {}&gt;".format(" ".join(left), " ".join(right))
+        return "&lt;{}, {}&gt;".format(" ".join(left) or "&mdash;", " ".join(right) or "&mdash;")
 
     def _group_values(self, group):
         by_pk = {}
@@ -165,7 +172,7 @@ class Languagegroups(DataTable):
 
     def col_defs(self):
         return [
-            Col(
+            IntegerIdCol(
                 self,
                 'frame_id',
                 sTitle='Id',

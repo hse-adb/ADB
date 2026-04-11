@@ -69,7 +69,7 @@ def main(args):
         concepticon_id = row.get('concepticon_id')
         data.add(
             models.FrameConcepticon,
-            '{}::{}::{}'.format(row['frame_id'], row.get('concepticon_id', ''), i),
+            row.get('concepticon_id'),
             frame=frame,
             concepticon_id=int(concepticon_id) if concepticon_id not in [None, ''] else None,
             concepticon=row.get('concepticon'),

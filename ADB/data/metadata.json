@@ -86,11 +86,7 @@
             "name": "concepticon"
           }
         ],
-        "primaryKey": [
-          "frame_id",
-          "concepticon_id",
-          "concepticon"
-        ],
+        "primaryKey": "concepticon_id",
         "foreignKeys": [
           {
             "columnReference": "frame_id",

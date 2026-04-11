@@ -40,8 +40,9 @@ class Frame(Base):
 
 class FrameConcepticon(Base):
     __tablename__ = 'frame_concepticon'
+    pk = None
     frame_pk = Column(Integer, ForeignKey('frame.pk'))
-    concepticon_id = Column(Integer)
+    concepticon_id = Column(Integer, primary_key=True)
     concepticon = Column(String)
     frame = relationship('Frame', backref=backref('concepticon_links'))
 

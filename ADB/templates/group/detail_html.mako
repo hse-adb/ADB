@@ -13,14 +13,16 @@ def id_sort_key(value):
 
 def fmt_values(meaning_objs):
     if not meaning_objs:
-        return "<>"
+        return "—"
     ordered = sorted(meaning_objs, key=lambda item: id_sort_key(item.id))
     left = [m.name for m in ordered if m.order == 1]
     right = [m.name for m in ordered if m.order == 2]
-    return "<{}, {}>".format(" ".join(left), " ".join(right))
+    return "<{}, {}>".format(" ".join(left) or "—", " ".join(right) or "—")
 %>
 
-<h2>${ctx.term}</h2>
+<h2>
+  <a href="${req.route_url('frame', id=ctx.frame.id, _query={'language': ctx.variety.id})}">${ctx.term}</a>
+</h2>
 
 <p>
   <strong>Frame:</strong> ${h.link(req, ctx.frame, label=ctx.frame.frame)}
