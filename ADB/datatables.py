@@ -29,6 +29,11 @@ class Frames(DataTable):
         right = [m.name for m in ordered if m.order == 2]
         return "&lt;{}, {}&gt;".format(" ".join(left) or "&mdash;", " ".join(right) or "&mdash;")
 
+    def _group_sort_key(self, meanings):
+        if not meanings:
+            return 1, ()
+        return 0, min(self._id_sort_key(meaning.id) for meaning in meanings)
+
     @property
     def languages(self):
         if not hasattr(self, '_languages'):
@@ -43,12 +48,19 @@ class Frames(DataTable):
 
         by_language = {}
         for group in frame.groups:
-            lang_map = by_language.setdefault(group.variety_pk, {})
+            meanings = {}
             for lex in group.lexemes:
                 for meaning in lex.meanings:
-                    lang_map[meaning.pk] = meaning
+                    meanings[meaning.pk] = meaning
+            by_language.setdefault(group.variety_pk, []).append(meanings)
 
-        formatted = {lang_pk: self._fmt_values(meanings.values()) for lang_pk, meanings in by_language.items()}
+        formatted = {
+            lang_pk: "<br>".join(
+                self._fmt_values(meanings.values())
+                for meanings in sorted(group_meanings, key=lambda item: self._group_sort_key(item.values()))
+            )
+            for lang_pk, group_meanings in by_language.items()
+        }
         self._frame_values_cache[frame.pk] = formatted
         return formatted
 
@@ -185,7 +197,14 @@ class Languagegroups(DataTable):
                 'frame',
                 sTitle='Frame',
                 model_col=models.Frame.frame,
-                format=lambda item: link(self.req, item.frame, label=item.frame.frame),
+                format=lambda item: HTML.a(
+                    item.frame.frame,
+                    href=self.req.route_url(
+                        'frame',
+                        id=item.frame.id,
+                        _query={'language': item.variety.id},
+                    ),
+                ),
             ),
             Col(
                 self,

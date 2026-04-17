@@ -43,11 +43,11 @@ def id_sort_key(value):
 
 def fmt_values(meaning_objs):
     if not meaning_objs:
-        return "—"
+        return "&mdash;"
     ordered = sorted(meaning_objs, key=lambda item: id_sort_key(item.id))
     left = [m.name for m in ordered if m.order == 1]
     right = [m.name for m in ordered if m.order == 2]
-    return "<{}, {}>".format(" ".join(left) or "—", " ".join(right) or "—")
+    return "&lt;{}, {}&gt;".format(" ".join(left) or "&mdash;", " ".join(right) or "&mdash;")
 
 frame_map = SelectedLanguagesMap(ctx, req, languages, eid='frame-map') if languages else None
 
