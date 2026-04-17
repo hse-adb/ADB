@@ -15,7 +15,4 @@ language_id,Name,Macroarea,Latitude,Longitude,Glottocode,ISO639P3code,Family_nam
 14,Atayal,,"24.52","121.39",atay1247,tay,Austronesian,aust1307
 15,Tundra Nenets,,"66.18","71.02",nene1249,yrk,Uralic,ural1272
 16,Nanai,,"48.43","134.80",nana1257,gld,Tungusic,tung1282
-17,Moksha,,"54.19","42.67",moks1248,mdf,Uralic,ural1272
-18,Eastern Mari,,"55.83","48.41",east2328,mhr,Uralic,ural1272
-19,Tatar,,"55.80","49.12",tata1255,tat,Turkic,turk1311
-20,Oirat,,"46.57","45.32",kalm1243,xal,Mongolic,mong1329
+17,Oirat,,"46.57","45.32",kalm1243,xal,Mongolic,mong1329

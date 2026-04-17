@@ -127,7 +127,6 @@ class Frames(DataTable):
                 'n_languages',
                 sTitle='N languages',
                 bSearchable=False,
-                bVisible=False,
                 model_col=None,
                 format=lambda item: self._n_languages(item),
             ),

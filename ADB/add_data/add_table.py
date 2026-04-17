@@ -23,16 +23,30 @@ def load_language_ids():
     return language_ids
 
 
-def load_existing_terms():
-    existing_terms = set()
+def load_existing_groups():
+    existing_groups = {}
     for line in read_csv_rows(data_path('groups.csv'))[1:]:
         if len(line) < 4:
             continue
+        group_id = int(line[0])
         language_id = int(line[1])
+        frame_id = int(line[2])
         term = line[3].strip()
         if term:
-            existing_terms.add((language_id, term))
-    return existing_terms
+            existing_groups[(language_id, term)] = (group_id, frame_id)
+    return existing_groups
+
+
+def load_existing_lexemes():
+    existing_lexemes = set()
+    for line in read_csv_rows(data_path('lexemes.csv'))[1:]:
+        if len(line) < 4:
+            continue
+        group_id = int(line[1])
+        lexeme = line[2].strip()
+        russian = line[3].strip()
+        existing_lexemes.add((group_id, lexeme, russian))
+    return existing_lexemes
 
 
 def get_table_language_id(table: str, language_ids: dict[str, int]) -> int:
@@ -68,6 +82,8 @@ def load_state():
     return {
         'frames': {frame[1]: int(frame[0]) for frame in prev_frames[1:]},
         'frames_concepticon': load_frames_concepticon(),
+        'existing_groups': load_existing_groups(),
+        'existing_lexemes': load_existing_lexemes(),
         'groups': {},
         'lexemes': [],
         'lexeme_meaning': [],
@@ -125,6 +141,8 @@ def get_or_create_frame_id(state: dict, frame: str, concepticon_ids: list[int]) 
 
 def get_or_create_group_id(state: dict, frame_id: int, term: str, language_id: int) -> int:
     group_key = (language_id, term)
+    if group_key in state['existing_groups']:
+        return state['existing_groups'][group_key][0]
     if group_key not in state['groups']:
         group_id = state['next_group_id']
         state['groups'][group_key] = (group_id, frame_id)
@@ -133,17 +151,22 @@ def get_or_create_group_id(state: dict, frame_id: int, term: str, language_id: i
 
 
 def append_lexeme(state: dict, row: list[str], columns: dict, group_id: int):
-    lexeme_id = state['next_lexeme_id']
     lexeme = row[columns['lexeme']].strip()
     russian = row[columns['russian']].split()[0].split(',')[0]
+    lexeme_key = (group_id, lexeme, russian)
+    if lexeme_key in state['existing_lexemes']:
+        return False
 
+    lexeme_id = state['next_lexeme_id']
     state['lexemes'].append((lexeme_id, group_id, lexeme, russian))
+    state['existing_lexemes'].add(lexeme_key)
 
     for meaning_id, column_id in columns['meanings']:
         if row[column_id] == '1':
             state['lexeme_meaning'].append((lexeme_id, meaning_id))
 
     state['next_lexeme_id'] += 1
+    return True
 
 
 def write_frames(frames: dict[str, int]):
@@ -197,8 +220,6 @@ def add_language(table: str, language_id: int):
     if columns is None:
         return False
 
-    existing_terms = load_existing_terms()
-
     for row in data[1:]:
         frame_value = row[columns['frame']]
         if not frame_value or frame_value == '0':
@@ -206,15 +227,11 @@ def add_language(table: str, language_id: int):
         term = get_row_term(row, columns)
         if not term:
             continue
-        row_key = (language_id, term)
-        if row_key in existing_terms:
-            continue
         concepticon_ids = list(map(int, frame_value.split(',')))
         frame = concepts[concepticon_ids[0]]
         frame_id = get_or_create_frame_id(state, frame, concepticon_ids)
         group_id = get_or_create_group_id(state, frame_id, term, language_id)
         append_lexeme(state, row, columns, group_id)
-        existing_terms.add(row_key)
 
     write_frames(state['frames'])
     write_frames_concepticon(state['frames_concepticon'], concepts)

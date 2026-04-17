@@ -3,6 +3,8 @@
 <%block name="title">${ctx.term}</%block>
 
 <%
+from clld.web.util.htmllib import literal
+
 lexemes = sorted(ctx.lexemes, key=lambda lex: lex.lexeme)
 
 def id_sort_key(value):
@@ -49,7 +51,7 @@ def fmt_values(meaning_objs):
       <tr>
         <td style="vertical-align: middle;">${lex.lexeme}</td>
         <td style="vertical-align: middle;">${lex.russian or ''}</td>
-        <td style="vertical-align: middle; white-space: nowrap;">${fmt_values(lex.meanings)}</td>
+        <td style="vertical-align: middle; white-space: nowrap;">${literal(fmt_values(lex.meanings))}</td>
       </tr>
     % endfor
   </tbody>

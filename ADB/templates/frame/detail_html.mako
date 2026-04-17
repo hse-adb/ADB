@@ -7,6 +7,7 @@
 from clld.db.meta import DBSession
 from sqlalchemy.orm import joinedload
 from clld.web.maps import SelectedLanguagesMap
+from clld.web.util.htmllib import literal
 from ADB import models
 
 language_id = req.params.get('language')
@@ -87,7 +88,7 @@ if language is not None:
           <td>
             <a href="${req.route_url('frame', id=ctx.id, _query={'language': variety.id})}">${variety.name}</a>
           </td>
-          <td>${fmt_values(language_meanings.get(variety.id, {}).values())}</td>
+          <td>${literal(fmt_values(language_meanings.get(variety.id, {}).values()))}</td>
         </tr>
       % endfor
     </tbody>
@@ -118,7 +119,7 @@ if language is not None:
           <tr>
             <td style="vertical-align: middle;">${lex.lexeme}</td>
             <td style="vertical-align: middle;">${lex.russian or ''}</td>
-            <td style="vertical-align: middle; white-space: nowrap;">${fmt_values(lex.meanings)}</td>
+            <td style="vertical-align: middle; white-space: nowrap;">${literal(fmt_values(lex.meanings))}</td>
           </tr>
         % endfor
       </tbody>
