@@ -140,13 +140,12 @@ def main(args):
         example_id = row.get('example_id')
         if not lexeme_id or not meaning_id or not example_id:
             continue
-        # lexeme: models.Lexeme = data['Lexeme'][lexeme_id]
         data.add(
             models.LexemeMeaningExample,
             '.'.join((lexeme_id, meaning_id, example_id)),
-            lexeme_pk = lexeme_id,
-            meaning_pk = meaning_id,
-            example_pk = example_id,
+            lexeme = data['Lexeme'][lexeme_id],
+            meaning = data['Meaning'][meaning_id],
+            example = data['Example'][example_id],
             position = ';'.join(row['position'])
         )
     

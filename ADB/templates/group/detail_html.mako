@@ -66,9 +66,9 @@ def fmt_values(meaning_objs):
 <table class="table table-striped table-condensed js-table-search-sort" style="table-layout: fixed; width: 100%;">
   <colgroup>
     <col style="width: 20%;">
-    <col style="width: 20%;">
+    <col style="width: 25%;">
     <col style="width: 10%;">
-    <col style="width: 50%;">
+    <col style="width: 45%;">
   </colgroup>
   <thead>
     <tr>
