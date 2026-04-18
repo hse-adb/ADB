@@ -1,0 +1,3 @@
+example_id,language_id,primary_text,analyzed_word,gloss,translated_text,meta_language_id,lgr_conformance,grammaticality_judgement
+1,11,vas'a kok kečӛštӛ jangə̑len.,vas'a	kok	kečӛ-štӛ	jangə̑l-en,Вася	два	день-IN	уставать-PRET,Вася за два дня устал.,,,Ok
+2,11,vas'a kok kečӛ jangə̑len.,vas'a	kok	kečӛ	jangə̑l-en,Вася	два	день	уставать-PRET,Вася два дня уставал.,,,*

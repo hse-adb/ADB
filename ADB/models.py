@@ -75,9 +75,35 @@ class Meaning(Base):
     order = Column(Integer)
     name = Column(String)
 
+class Example(Base):
+    __tablename__ = 'example'
+    id = Column(String, unique=True, nullable=False)
+    variety_pk = Column(Integer, ForeignKey('variety.pk'))
+    primary_text = Column(String)
+    analyzed_word = Column(String)
+    gloss = Column(String)
+    translated_text = Column(String)
+    meta_language_pk = Column(Integer, ForeignKey('variety.pk'))
+    lgr_conformance = Column(String)
+    grammaticality_judgement = Column(Boolean)
+
 lexeme_meaning = Table(
     'lexeme_meaning',
     Base.metadata,
     Column('lexeme_pk', Integer, ForeignKey('lexeme.pk')),
     Column('meaning_pk', Integer, ForeignKey('meaning.pk'))
 )
+
+class LexemeMeaningExample(Base):
+    __tablename__ = 'lexeme_meaning_example'
+    lexeme_pk = Column(Integer, ForeignKey('lexeme.pk'))
+    meaning_pk = Column(Integer, ForeignKey('meaning.pk'))
+    example_pk = Column(Integer, ForeignKey('example.pk'))
+    position = Column(String)
+    lexeme = relationship('Lexeme', backref=backref('examples'))
+    meaning = relationship('Meaning')
+    example = relationship('Example', backref=backref('lexemes'))
+
+    @property
+    def position_list(self):
+        return self.position.split(";")

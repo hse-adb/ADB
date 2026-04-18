@@ -4,6 +4,9 @@
 
 <%
 lexemes = sorted(ctx.lexemes, key=lambda lex: lex.lexeme)
+lexeme_meaning_examples = []
+for lexeme in lexemes:
+  lexeme_meaning_examples += lexeme.examples
 
 def id_sort_key(value):
     try:
@@ -54,3 +57,46 @@ def fmt_values(meaning_objs):
     % endfor
   </tbody>
 </table>
+
+% if ctx.lexemes is not None:
+<p>
+  <strong>Examples:</strong>
+</p>
+  
+<table class="table table-striped table-condensed js-table-search-sort" style="table-layout: fixed; width: 100%;">
+  <colgroup>
+    <col style="width: 20%;">
+    <col style="width: 20%;">
+    <col style="width: 10%;">
+    <col style="width: 50%;">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Lexeme</th>
+      <th>Meaning</th>
+      <th>A-meaning</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    % for lme in lexeme_meaning_examples:
+      <tr>
+        <td style="vertical-align: middle;">${lme.lexeme.lexeme}</td>
+        <td style="vertical-align: middle;">${lme.lexeme.russian}</td>
+        <td style="vertical-align: middle;">${lme.meaning}</td>
+        <td style="vertical-align: middle; white-space: nowrap;">
+          <%include file="../utils/gloss.mako" args="
+            primary_text=lme.example.primary_text,
+            analyzed_word=lme.example.analyzed_word,
+            gloss=lme.example.gloss,
+            translated_text=lme.example.translated_text,
+            position=lme.position,
+            grammatical=lme.example.grammaticality_judgement
+          "/>
+        </td>
+      </tr>
+    % endfor
+  </tbody>
+</table>
+
+% endif
