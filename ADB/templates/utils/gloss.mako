@@ -25,23 +25,23 @@ def upper(string: str):
     % endif
     % if gloss is not None:
     <p style="margin: 0px;">
-        % for (i, morpheme) in enumerate(gloss.split('-')):
-        % if i > 0:
-        <span>-</span>\
-        % endif
-        % if upper(morpheme) == morpheme:
-        <span style="font-variant: small-caps; font-variant-numeric: lining-nums; text-transform: lowercase;">${morpheme}</span>\
-        % else:
-        ${morpheme}\
-        % endif
-        % endfor
+% for (i, morpheme) in enumerate(gloss.split('-')):
+% if i > 0:
+<span>-</span>\
+% endif
+% if upper(morpheme) == morpheme:
+<span style="font-variant: small-caps; font-variant-numeric: lining-nums; text-transform: lowercase;">${morpheme}</span>\
+% else:
+${morpheme}\
+% endif
+% endfor
     </p>
     % endif
 </div>
 </%def>
 
 <div class="gloss">
-    <p>${'*' if not grammatical else ''}${primary_text}</p>
+    <p style="margin-bottom: 0.3em;">${'*' if not grammatical else ''}${primary_text}</p>
 % if not grammatical:
     <div style="float: left;">*</div>
 % endif
