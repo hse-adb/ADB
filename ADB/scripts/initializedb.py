@@ -108,6 +108,21 @@ def main(args):
             name=row['meaning'],
         )
     
+    for row in ds.iter_rows('ExampleTable'):
+        data.add(
+            models.Example,
+            row['example_id'],
+            id=row['example_id'],
+            variety_pk=row['language_id'],
+            primary_text=row['primary_text'],
+            analyzed_word='\t'.join(row['analyzed_word']),
+            gloss='\t'.join(row['gloss']),
+            translated_text=row['translated_text'],
+            meta_language_pk=row['meta_language_id'] or None,
+            lgr_conformance=row['lgr_conformance'],
+            grammaticality_judgement=row['grammaticality_judgement']
+        )
+
     # lexeme-to-meanings relation
     for row in ds['lexeme_meaning.csv'].iterdicts():
         lexeme_id = row.get('lexeme_id')
@@ -117,6 +132,22 @@ def main(args):
         lexeme = data['Lexeme'][lexeme_id]
         meaning = data['Meaning'][meaning_id]
         lexeme.meanings.append(meaning)
+
+    # examples-for-lexeme-meanings-pairs
+    for row in ds['lexeme_meaning_example.csv'].iterdicts():
+        lexeme_id = row.get('lexeme_id')
+        meaning_id = row.get('meaning_id')
+        example_id = row.get('example_id')
+        if not lexeme_id or not meaning_id or not example_id:
+            continue
+        data.add(
+            models.LexemeMeaningExample,
+            '.'.join((lexeme_id, meaning_id, example_id)),
+            lexeme = data['Lexeme'][lexeme_id],
+            meaning = data['Meaning'][meaning_id],
+            example = data['Example'][example_id],
+            position = ';'.join(row['position'])
+        )
     
     if ds.bibpath:
         for rec in bibtex.Database.from_file(ds.bibpath, lowercase=True):
