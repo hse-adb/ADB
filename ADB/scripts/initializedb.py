@@ -56,7 +56,23 @@ def main(args):
             models.Frame,
             row['frame_id'],
             id=row['frame_id'],
-            name=row['frame']
+            frame=row['frame']
+        )
+
+    try:
+        frame_concepticon_rows = ds['frames_concepticon.csv'].iterdicts()
+    except KeyError:
+        frame_concepticon_rows = []
+
+    for i, row in enumerate(frame_concepticon_rows, start=1):
+        frame = data['Frame'][row['frame_id']]
+        concepticon_id = row.get('concepticon_id')
+        data.add(
+            models.FrameConcepticon,
+            row.get('concepticon_id'),
+            frame=frame,
+            concepticon_id=int(concepticon_id) if concepticon_id not in [None, ''] else None,
+            concepticon=row.get('concepticon'),
         )
     
     for row in ds['groups.csv'].iterdicts():

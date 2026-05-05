@@ -3,6 +3,8 @@
 <%block name="title">${ctx.term}</%block>
 
 <%
+from clld.web.util.htmllib import literal
+
 lexemes = sorted(ctx.lexemes, key=lambda lex: lex.lexeme)
 
 def id_sort_key(value):
@@ -13,17 +15,19 @@ def id_sort_key(value):
 
 def fmt_values(meaning_objs):
     if not meaning_objs:
-        return "<>"
+        return "&mdash;"
     ordered = sorted(meaning_objs, key=lambda item: id_sort_key(item.id))
     left = [m.name for m in ordered if m.order == 1]
     right = [m.name for m in ordered if m.order == 2]
-    return "<{}, {}>".format(" ".join(left), " ".join(right))
+    return "&lt;{}, {}&gt;".format(" ".join(left) or "&mdash;", " ".join(right) or "&mdash;")
 %>
 
-<h2>${ctx.term}</h2>
+<h2>
+  <a href="${req.route_url('frame', id=ctx.frame.id, _query={'language': ctx.variety.id})}">${ctx.term}</a>
+</h2>
 
 <p>
-  <strong>Frame:</strong> ${h.link(req, ctx.frame)}
+  <strong>Frame:</strong> ${h.link(req, ctx.frame, label=ctx.frame.frame)}
 </p>
 <p>
   <strong>Language:</strong> ${h.link(req, ctx.variety)}
@@ -47,7 +51,7 @@ def fmt_values(meaning_objs):
       <tr>
         <td style="vertical-align: middle;">${lex.lexeme}</td>
         <td style="vertical-align: middle;">${lex.russian or ''}</td>
-        <td style="vertical-align: middle; white-space: nowrap;">${fmt_values(lex.meanings)}</td>
+        <td style="vertical-align: middle; white-space: nowrap;">${literal(fmt_values(lex.meanings))}</td>
       </tr>
     % endfor
   </tbody>

@@ -1,4 +1,5 @@
 development.ini
+db.sqlite
 *.py[cod]
 *.komodoproject
 

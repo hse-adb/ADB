@@ -35,7 +35,16 @@ class Variety(CustomModelMixin, common.Language):
 class Frame(Base):
     __tablename__ = 'frame'
     id = Column(String, unique=True, nullable=False)
-    name = Column(String)
+    frame = Column(String)
+
+
+class FrameConcepticon(Base):
+    __tablename__ = 'frame_concepticon'
+    pk = None
+    frame_pk = Column(Integer, ForeignKey('frame.pk'))
+    concepticon_id = Column(Integer, primary_key=True)
+    concepticon = Column(String)
+    frame = relationship('Frame', backref=backref('concepticon_links'))
 
 @implementer(adb_interfaces.IGroup)
 class Group(Base):

@@ -1,12 +1,13 @@
 <%inherit file="../app.mako"/>
 <%! active_menu_item = "frames" %>
 
-<%block name="title">${ctx.name}</%block>
+<%block name="title">${ctx.frame}</%block>
 
 <%
 from clld.db.meta import DBSession
 from sqlalchemy.orm import joinedload
 from clld.web.maps import SelectedLanguagesMap
+from clld.web.util.htmllib import literal
 from ADB import models
 
 language_id = req.params.get('language')
@@ -43,11 +44,11 @@ def id_sort_key(value):
 
 def fmt_values(meaning_objs):
     if not meaning_objs:
-        return "<>"
+        return "&mdash;"
     ordered = sorted(meaning_objs, key=lambda item: id_sort_key(item.id))
     left = [m.name for m in ordered if m.order == 1]
     right = [m.name for m in ordered if m.order == 2]
-    return "<{}, {}>".format(" ".join(left), " ".join(right))
+    return "&lt;{}, {}&gt;".format(" ".join(left) or "&mdash;", " ".join(right) or "&mdash;")
 
 frame_map = SelectedLanguagesMap(ctx, req, languages, eid='frame-map') if languages else None
 
@@ -63,7 +64,11 @@ if language is not None:
     )
 %>
 
-<h2>${ctx.name}</h2>
+% if language is not None:
+  <h2><a href="${req.route_url('frame', id=ctx.id)}">${ctx.frame}</a></h2>
+% else:
+  <h2>${ctx.frame}</h2>
+% endif
 
 % if frame_map and language is None:
   ${frame_map.render()}
@@ -83,7 +88,7 @@ if language is not None:
           <td>
             <a href="${req.route_url('frame', id=ctx.id, _query={'language': variety.id})}">${variety.name}</a>
           </td>
-          <td>${fmt_values(language_meanings.get(variety.id, {}).values())}</td>
+          <td>${literal(fmt_values(language_meanings.get(variety.id, {}).values()))}</td>
         </tr>
       % endfor
     </tbody>
@@ -114,7 +119,7 @@ if language is not None:
           <tr>
             <td style="vertical-align: middle;">${lex.lexeme}</td>
             <td style="vertical-align: middle;">${lex.russian or ''}</td>
-            <td style="vertical-align: middle; white-space: nowrap;">${fmt_values(lex.meanings)}</td>
+            <td style="vertical-align: middle; white-space: nowrap;">${literal(fmt_values(lex.meanings))}</td>
           </tr>
         % endfor
       </tbody>

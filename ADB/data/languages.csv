@@ -1,11 +1,18 @@
 language_id,Name,Macroarea,Latitude,Longitude,Glottocode,ISO639P3code,Family_name,Family_level_ID
-1,Chuvash,,"55.49","47.16",chuv1255,chv,Turkic,turk1311
-2,Nanai,,"48.43","134.80",nana1257,gld,Tungusic,tung1282
-3,Karachay-Balkar,,"43.56","42.26",kara1465,krc,Turkic,turk1311
-4,Bagvalal,,"42.40","46.10",bagv1239,kva,Nakh-Daghestanian,nakh1245
-5,Moksha,,"54.19","42.67",moks1248,mdf,Uralic,ural1272
-6,Eastern Mari,,"55.83","48.41",east2328,mhr,Uralic,ural1272
-7,Western Mari,,"56.22","46.57",west2392,mrj,Uralic,ural1272
-8,Kildin Saami,,"68.22","35.83",kild1236,sjd,Uralic,ural1272
-9,Tatar,,"55.80","49.12",tata1255,tat,Turkic,turk1311
-10,Tundra Nenets,,"66.18","71.02",nene1249,yrk,Uralic,ural1272
+1,West Circassian,,"44.00","39.33",adyg1241,ady,Abkhaz-Adyge,abkh1242
+2,Tuba Kizi,,"50.90","88.07",tuba1280,atv,Turkic,turk1311
+3,Bashkir,,"53.60","56.56",bash1264,bak,Turkic,turk1311
+4,Chuvash,,"55.49","47.16",chuv1255,chv,Turkic,turk1311
+5,Even,,"70.67","130.91",even1260,eve,Tungusic,tung1282
+6,Karachay-Balkar,,"43.56","42.26",kara1465,krc,Turkic,turk1311
+7,Bagvalal,,"42.40","46.10",bagv1239,kva,Nakh-Daghestanian,nakh1245
+8,Lithuanian,,"55.14","23.96",lith1251,lit,Indo-European,indo1319
+9,Moksha,,"54.19","42.67",moks1248,mdf,Uralic,ural1272
+10,Eastern Mari,,"55.83","48.41",east2328,mhr,Uralic,ural1272
+11,Western Mari,,"56.22","46.57",west2392,mrj,Uralic,ural1272
+12,Kildin Saami,,"68.22","35.83",kild1236,sjd,Uralic,ural1272
+13,Tatar,,"55.80","49.12",tata1255,tat,Turkic,turk1311
+14,Atayal,,"24.52","121.39",atay1247,tay,Austronesian,aust1307
+15,Tundra Nenets,,"66.18","71.02",nene1249,yrk,Uralic,ural1272
+16,Nanai,,"48.43","134.80",nana1257,gld,Tungusic,tung1282
+17,Oirat,,"46.57","45.32",kalm1243,xal,Mongolic,mong1329
