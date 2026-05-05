@@ -16,7 +16,7 @@ def upper(string: str):
 
 <%def name="glossed_word(analyzed_word, gloss, selected=False)">
 % if selected:
-<div style="float: left; margin-bottom: 0.3em;margin-right: 1em;font-style: bold;">
+<div style="float: left; margin-bottom: 0.3em;margin-right: 1em;font-weight: bold;">
 % else:
 <div style="float: left; margin-bottom: 0.3em;margin-right: 1em;">
 % endif
