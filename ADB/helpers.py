@@ -1,4 +1,5 @@
 from pathlib import Path
+from urllib.parse import quote, urlparse
 
 import ADB
 
@@ -70,3 +71,94 @@ def language_description(language):
     if not path.exists():
         return ''
     return path.read_text(encoding='utf-8').strip()
+
+
+def language_external_links(language):
+    jsondata = getattr(language, 'jsondata', None) or {}
+    links = jsondata.get('glottolog_links') or []
+    visible_links = []
+    for link in links:
+        item = _external_link_item(link)
+        if item is not None:
+            visible_links.append(item)
+    return visible_links
+
+
+def _external_link_item(link):
+    item = {
+        'label': (link.get('label') or '').strip(),
+        'url': (link.get('url') or '').strip(),
+        'icon_url': (link.get('icon_url') or '').strip(),
+        'icon_alt': (link.get('icon_alt') or '').strip(),
+    }
+    if not item['label'] or not item['url'] or _is_language_identifier_link(item):
+        return None
+    return item
+
+
+def _is_language_identifier_link(link):
+    parsed = urlparse(link['url'])
+    hostname = (parsed.hostname or '').lower()
+    path = parsed.path.rstrip('/')
+    label = link['label'].lower()
+
+    if hostname == 'iso639-3.sil.org' and path.startswith('/code/'):
+        return True
+    if hostname in {'glottolog.org', 'www.glottolog.org'}:
+        return path.startswith('/resource/languoid/id/')
+    return label.startswith('glottocode:') or ' at iso 639-3' in label
+
+
+def language_identifier_badges(language):
+    glottocode = (getattr(language, 'glottocode', None) or '').strip()
+    iso_code = (getattr(language, 'iso639p3code', None) or '').strip().lower()
+    badges = []
+
+    if glottocode:
+        badges.append({
+            'label': 'Glottocode:',
+            'value': glottocode,
+            'url': 'http://glottolog.org/resource/languoid/id/{}'.format(
+                quote(glottocode)
+            ),
+            'identifier_class': 'glottolog',
+        })
+
+    if iso_code:
+        badges.append({
+            'label': 'ISO 639-3:',
+            'value': iso_code,
+            'url': 'https://iso639-3.sil.org/code/{}'.format(quote(iso_code)),
+            'identifier_class': 'iso639-3',
+        })
+
+    return badges
+
+
+def language_wals_breadcrumb(language):
+    jsondata = getattr(language, 'jsondata', None) or {}
+    wals_info = jsondata.get('wals_info') or {}
+
+    return [
+        {
+            'label': (item.get('label') or '').strip(),
+            'value': (item.get('value') or '').strip(),
+            'url': (item.get('url') or '').strip(),
+        }
+        for item in wals_info.get('breadcrumb') or []
+        if (item.get('label') or '').strip() and (item.get('value') or '').strip()
+    ]
+
+
+def language_wals_spoken_in(language):
+    jsondata = getattr(language, 'jsondata', None) or {}
+    wals_info = jsondata.get('wals_info') or {}
+
+    return [
+        {
+            'label': (item.get('label') or '').strip(),
+            'url': (item.get('url') or '').strip(),
+        }
+        for item in wals_info.get('spoken_in') or []
+        if (item.get('label') or '').strip()
+    ]

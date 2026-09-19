@@ -1,3 +1,5 @@
+import json
+
 from clld.cliutil import Data, bibtex2source
 from clld.db.meta import DBSession
 from clld.db.models import common
@@ -17,6 +19,18 @@ def list_value(value):
     if isinstance(value, str):
         return [value]
     return value
+
+
+def glottolog_links(value):
+    if not value:
+        return []
+    return json.loads(value)
+
+
+def wals_info(value):
+    if not value:
+        return {}
+    return json.loads(value)
 
 
 def main(args):
@@ -58,6 +72,10 @@ def main(args):
             glottocode=lang['Glottocode'],
             family_name=lang['Family_name'],
             family_level_id=lang['Family_level_ID'],
+            jsondata={
+                'glottolog_links': glottolog_links(lang.get('Glottolog_links')),
+                'wals_info': wals_info(lang.get('WALS_info')),
+            },
         )
 
     for row in ds['frames.csv'].iterdicts():

@@ -2,13 +2,17 @@
 <%! active_menu_item = "frames" %>
 
 <%block name="title">${ctx.frame}</%block>
+<%block name="head">
+  <link href="${req.static_url('ADB:static/project.css', _query={'v': 'frame-pie-v3'})}" rel="stylesheet">
+  <script src="${req.static_url('ADB:static/project.js', _query={'v': 'frame-pie-v3'})}"></script>
+</%block>
 
 <%
 from clld.db.meta import DBSession
-from clld.web.maps import SelectedLanguagesMap
 from clld.web.util.htmllib import literal
 from sqlalchemy.orm import joinedload, subqueryload
 from ADB import models
+from ADB.frame_map import FramePieMap, build_frame_map_data, css_variables
 from ADB.helpers import collect_group_meanings, format_group_meanings, format_meanings
 
 frame_groups = (
@@ -33,7 +37,17 @@ language_group_meanings = {}
 for group in frame_groups:
     language_group_meanings.setdefault(group.variety.id, []).append(collect_group_meanings(group))
 
-frame_map = SelectedLanguagesMap(ctx, req, languages, eid='frame-map') if languages else None
+frame_map_data = build_frame_map_data(frame_groups)
+frame_map = (
+    FramePieMap(
+        ctx,
+        req,
+        languages,
+        frame_map_data['sectors_by_language'],
+        eid='frame-map',
+    )
+    if languages else None
+)
 
 groups = [group for group in frame_groups if language is not None and group.variety_pk == language.pk]
 %>
@@ -45,7 +59,50 @@ groups = [group for group in frame_groups if language is not None and group.vari
 % endif
 
 % if frame_map and language is None:
-  ${frame_map.render()}
+  <div class="frame-map-layout js-frame-map-colors"
+       data-map-id="frame-map"
+       style="${css_variables(frame_map_data)}">
+    <div class="frame-map-layout-map">
+      ${frame_map.render()}
+    </div>
+    <div class="frame-map-legend">
+      <div class="frame-map-legend-heading">
+        <h4>A-class colors</h4>
+        % if frame_map_data['legend_values']:
+          <button class="btn btn-mini js-frame-map-reset" type="button">Reset</button>
+        % endif
+      </div>
+      % for item in frame_map_data['legend_values']:
+        <label class="frame-map-legend-row">
+          <input class="js-frame-map-color"
+                 type="color"
+                 value="${item['color']}"
+                 data-color-var="${item['css_var']}"
+                 data-default-color="${item['color']}">
+          <span class="frame-map-legend-swatch"
+                style="background-color: var(${item['css_var']}, ${item['color']});"></span>
+          <span class="frame-map-legend-label">${literal(item['label'])}</span>
+          <span class="frame-map-legend-count">${item['language_count']}</span>
+        </label>
+      % endfor
+      % if frame_map_data['has_unique']:
+        <div class="frame-map-legend-row frame-map-legend-row-fixed">
+          <span class="frame-map-legend-control-spacer"></span>
+          <span class="frame-map-legend-swatch"
+                style="background-color: var(--frame-map-unique, ${frame_map_data['unique_color']});"></span>
+          <span class="frame-map-legend-label">unique</span>
+        </div>
+      % endif
+      % if frame_map_data['has_no_data']:
+        <div class="frame-map-legend-row frame-map-legend-row-fixed">
+          <span class="frame-map-legend-control-spacer"></span>
+          <span class="frame-map-legend-swatch"
+                style="background-color: var(--frame-map-no-data, ${frame_map_data['no_data_color']});"></span>
+          <span class="frame-map-legend-label">no data</span>
+        </div>
+      % endif
+    </div>
+  </div>
 % endif
 
 % if language is None:
