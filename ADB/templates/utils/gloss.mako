@@ -1,17 +1,27 @@
 <%page args="primary_text, analyzed_word=[], gloss=[], translated_text='', position=[], grammatical=True"/>
 
 <%
-def selected_indicator(size: int, position: list):
+def selected_indicator(size: int, position):
     selected = [False] * size
-    for pos in position:
-        if pos.isnumeric(): selected[int(pos)-1] = True
+    positions = [position] if isinstance(position, str) else position
+    for pos in positions or []:
+        if pos.isnumeric():
+            index = int(pos) - 1
+            if 0 <= index < size:
+                selected[index] = True
         else:
             start, end = pos.split(':')
-            selected[int(start)-1:int(end)] = True
+            start = max(int(start) - 1, 0)
+            end = min(int(end), size)
+            selected[start:end] = [True] * (end - start)
     return selected
 
 def upper(string: str):
     return string.upper()
+
+words = analyzed_word.split('\t') if analyzed_word else []
+glosses = gloss.split('\t') if gloss else []
+selected_words = selected_indicator(len(glosses), position)
 %>
 
 <%def name="glossed_word(analyzed_word, gloss, selected=False)">
@@ -45,7 +55,7 @@ ${morpheme}\
 % if not grammatical:
     <div style="float: left;">*</div>
 % endif
-% for word, gl, selected in zip(analyzed_word.split('\t'), gloss.split('\t'), selected_indicator(len(gloss), position)):
+% for word, gl, selected in zip(words, glosses, selected_words):
 ${glossed_word(word, gl, selected)}
 % endfor
 % if translated_text is not None:

@@ -4,25 +4,10 @@
 
 <%
 from clld.web.util.htmllib import literal
+from ADB.helpers import format_meanings
 
 lexemes = sorted(ctx.lexemes, key=lambda lex: lex.lexeme)
-lexeme_meaning_examples = []
-for lexeme in lexemes:
-  lexeme_meaning_examples += lexeme.examples
-
-def id_sort_key(value):
-    try:
-        return (0, int(value))
-    except (TypeError, ValueError):
-        return (1, str(value))
-
-def fmt_values(meaning_objs):
-    if not meaning_objs:
-        return "&mdash;"
-    ordered = sorted(meaning_objs, key=lambda item: id_sort_key(item.id))
-    left = [m.name for m in ordered if m.order == 1]
-    right = [m.name for m in ordered if m.order == 2]
-    return "&lt;{}, {}&gt;".format(" ".join(left) or "&mdash;", " ".join(right) or "&mdash;")
+lexeme_meaning_examples = [example for lexeme in lexemes for example in lexeme.examples]
 %>
 
 <h2>
@@ -54,13 +39,13 @@ def fmt_values(meaning_objs):
       <tr>
         <td style="vertical-align: middle;">${lex.lexeme}</td>
         <td style="vertical-align: middle;">${lex.russian or ''}</td>
-        <td style="vertical-align: middle; white-space: nowrap;">${literal(fmt_values(lex.meanings))}</td>
+        <td style="vertical-align: middle; white-space: nowrap;">${literal(format_meanings(lex.meanings))}</td>
       </tr>
     % endfor
   </tbody>
 </table>
 
-% if ctx.lexemes is not None:
+% if lexeme_meaning_examples:
 <p>
   <strong>Examples:</strong>
 </p>
@@ -92,7 +77,7 @@ def fmt_values(meaning_objs):
             analyzed_word=lme.example.analyzed_word,
             gloss=lme.example.gloss,
             translated_text=lme.example.translated_text,
-            position=lme.position,
+            position=lme.position_list,
             grammatical=lme.example.grammaticality_judgement
           "/>
         </td>

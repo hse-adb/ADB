@@ -5,63 +5,37 @@
 
 <%
 from clld.db.meta import DBSession
-from sqlalchemy.orm import joinedload
 from clld.web.maps import SelectedLanguagesMap
 from clld.web.util.htmllib import literal
+from sqlalchemy.orm import joinedload, subqueryload
 from ADB import models
+from ADB.helpers import collect_group_meanings, format_group_meanings, format_meanings
 
-language_id = req.params.get('language')
-language = None
-if language_id:
-    language = DBSession.query(models.Variety).filter(models.Variety.id == language_id).first()
-
-languages = (
-    DBSession.query(models.Variety)
-    .join(models.Group, models.Group.variety_pk == models.Variety.pk)
+frame_groups = (
+    DBSession.query(models.Group)
+    .options(
+        joinedload(models.Group.variety),
+        subqueryload(models.Group.lexemes).subqueryload(models.Lexeme.meanings),
+    )
     .filter(models.Group.frame_pk == ctx.pk)
-    .distinct()
-    .order_by(models.Variety.name)
+    .order_by(models.Group.term)
     .all()
 )
 
-language_meanings = {}
-for language_obj, meaning in (
-    DBSession.query(models.Variety, models.Meaning)
-    .join(models.Group, models.Group.variety_pk == models.Variety.pk)
-    .join(models.Lexeme, models.Lexeme.group_pk == models.Group.pk)
-    .join(models.lexeme_meaning, models.lexeme_meaning.c.lexeme_pk == models.Lexeme.pk)
-    .join(models.Meaning, models.Meaning.pk == models.lexeme_meaning.c.meaning_pk)
-    .filter(models.Group.frame_pk == ctx.pk)
-    .all()
-):
-    language_meanings.setdefault(language_obj.id, {})[meaning.pk] = meaning
+languages = sorted(
+    {group.variety_pk: group.variety for group in frame_groups}.values(),
+    key=lambda item: item.name,
+)
+language_id = req.params.get('language')
+language = next((item for item in languages if item.id == language_id), None)
 
-def id_sort_key(value):
-    try:
-        return (0, int(value))
-    except (TypeError, ValueError):
-        return (1, str(value))
-
-def fmt_values(meaning_objs):
-    if not meaning_objs:
-        return "&mdash;"
-    ordered = sorted(meaning_objs, key=lambda item: id_sort_key(item.id))
-    left = [m.name for m in ordered if m.order == 1]
-    right = [m.name for m in ordered if m.order == 2]
-    return "&lt;{}, {}&gt;".format(" ".join(left) or "&mdash;", " ".join(right) or "&mdash;")
+language_group_meanings = {}
+for group in frame_groups:
+    language_group_meanings.setdefault(group.variety.id, []).append(collect_group_meanings(group))
 
 frame_map = SelectedLanguagesMap(ctx, req, languages, eid='frame-map') if languages else None
 
-groups = []
-if language is not None:
-    groups = (
-        DBSession.query(models.Group)
-        .options(joinedload(models.Group.lexemes).joinedload(models.Lexeme.meanings))
-        .filter(models.Group.frame_pk == ctx.pk)
-        .filter(models.Group.variety_pk == language.pk)
-        .order_by(models.Group.term)
-        .all()
-    )
+groups = [group for group in frame_groups if language is not None and group.variety_pk == language.pk]
 %>
 
 % if language is not None:
@@ -88,7 +62,7 @@ if language is not None:
           <td>
             <a href="${req.route_url('frame', id=ctx.id, _query={'language': variety.id})}">${variety.name}</a>
           </td>
-          <td>${literal(fmt_values(language_meanings.get(variety.id, {}).values()))}</td>
+          <td>${literal(format_group_meanings(language_group_meanings.get(variety.id, [])))}</td>
         </tr>
       % endfor
     </tbody>
@@ -119,7 +93,7 @@ if language is not None:
           <tr>
             <td style="vertical-align: middle;">${lex.lexeme}</td>
             <td style="vertical-align: middle;">${lex.russian or ''}</td>
-            <td style="vertical-align: middle; white-space: nowrap;">${literal(fmt_values(lex.meanings))}</td>
+            <td style="vertical-align: middle; white-space: nowrap;">${literal(format_meanings(lex.meanings))}</td>
           </tr>
         % endfor
       </tbody>

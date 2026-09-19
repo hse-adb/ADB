@@ -5,6 +5,7 @@ from clld.web.util.helpers import link
 from clld.web.util.htmllib import HTML, literal
 
 from ADB import models
+from ADB.helpers import collect_group_meanings, format_group_meanings, format_meanings
 from clld.db.meta import DBSession
 
 
@@ -14,26 +15,6 @@ class IntegerIdCol(Col):
 
 
 class Frames(DataTable):
-    @staticmethod
-    def _id_sort_key(value):
-        try:
-            return 0, int(value)
-        except (TypeError, ValueError):
-            return 1, str(value)
-
-    def _fmt_values(self, meaning_objs):
-        if not meaning_objs:
-            return "&mdash;"
-        ordered = sorted(meaning_objs, key=lambda item: self._id_sort_key(item.id))
-        left = [m.name for m in ordered if m.order == 1]
-        right = [m.name for m in ordered if m.order == 2]
-        return "&lt;{}, {}&gt;".format(" ".join(left) or "&mdash;", " ".join(right) or "&mdash;")
-
-    def _group_sort_key(self, meanings):
-        if not meanings:
-            return 1, ()
-        return 0, min(self._id_sort_key(meaning.id) for meaning in meanings)
-
     @property
     def languages(self):
         if not hasattr(self, '_languages'):
@@ -48,17 +29,10 @@ class Frames(DataTable):
 
         by_language = {}
         for group in frame.groups:
-            meanings = {}
-            for lex in group.lexemes:
-                for meaning in lex.meanings:
-                    meanings[meaning.pk] = meaning
-            by_language.setdefault(group.variety_pk, []).append(meanings)
+            by_language.setdefault(group.variety_pk, []).append(collect_group_meanings(group))
 
         formatted = {
-            lang_pk: "<br>".join(
-                self._fmt_values(meanings.values())
-                for meanings in sorted(group_meanings, key=lambda item: self._group_sort_key(item.values()))
-            )
+            lang_pk: format_group_meanings(group_meanings)
             for lang_pk, group_meanings in by_language.items()
         }
         self._frame_values_cache[frame.pk] = formatted
@@ -85,22 +59,31 @@ class Frames(DataTable):
             )
 
         def format(self, item):
-            value = self.dt._frame_values(item).get(self.language.pk, "&mdash;")
+            value = self.dt._frame_values(item).get(self.language.pk, "")
+            if not value:
+                return literal("&mdash;")
             if value == "&mdash;":
                 return literal(value)
             return HTML.a(
                 literal(value),
-                href=self.dt.req.route_url('frame', id=item.id, _query={'language': self.language.id}),
+                href=self.dt.req.route_url(
+                    'frame',
+                    id=item.id,
+                    _query={'language': self.language.id},
+                ),
             )
 
     def base_query(self, query):
-        return query.outerjoin(models.Group, models.Group.frame_pk == models.Frame.pk)\
-            .group_by(models.Frame.pk)\
+        return (
+            query
+            .outerjoin(models.Group, models.Group.frame_pk == models.Frame.pk)
+            .group_by(models.Frame.pk)
             .options(
                 subqueryload(models.Frame.groups)
                 .subqueryload(models.Group.lexemes)
                 .subqueryload(models.Lexeme.meanings)
             )
+        )
 
     def get_options(self):
         return {'aaSorting': [[2, 'desc']]}
@@ -138,27 +121,8 @@ class Frames(DataTable):
 class Languagegroups(DataTable):
     __constraints__ = [models.Variety]
 
-    @staticmethod
-    def _id_sort_key(value):
-        try:
-            return 0, int(value)
-        except (TypeError, ValueError):
-            return 1, str(value)
-
-    def _fmt_values(self, meaning_objs):
-        if not meaning_objs:
-            return "&mdash;"
-        ordered = sorted(meaning_objs, key=lambda item: self._id_sort_key(item.id))
-        left = [m.name for m in ordered if m.order == 1]
-        right = [m.name for m in ordered if m.order == 2]
-        return "&lt;{}, {}&gt;".format(" ".join(left) or "&mdash;", " ".join(right) or "&mdash;")
-
     def _group_values(self, group):
-        by_pk = {}
-        for lex in group.lexemes:
-            for meaning in lex.meanings:
-                by_pk[meaning.pk] = meaning
-        return self._fmt_values(by_pk.values())
+        return format_meanings(collect_group_meanings(group).values())
 
     class AClassCol(Col):
         def search(self, qs):

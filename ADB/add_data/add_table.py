@@ -1,5 +1,6 @@
 import csv
 import json
+import re
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -38,21 +39,34 @@ def load_existing_groups():
 
 
 def load_existing_lexemes():
-    existing_lexemes = set()
+    existing_lexemes = {}
     for line in read_csv_rows(data_path('lexemes.csv'))[1:]:
         if len(line) < 4:
             continue
+        lexeme_id = int(line[0])
         group_id = int(line[1])
         lexeme = line[2].strip()
         russian = line[3].strip()
-        existing_lexemes.add((group_id, lexeme, russian))
+        existing_lexemes[(group_id, lexeme, russian)] = lexeme_id
     return existing_lexemes
+
+
+def load_existing_lexeme_meanings():
+    existing_lexeme_meanings = set()
+    for line in read_csv_rows(data_path('lexeme_meaning.csv'))[1:]:
+        if len(line) < 2:
+            continue
+        existing_lexeme_meanings.add((int(line[0]), int(line[1])))
+    return existing_lexeme_meanings
 
 
 def get_table_language_id(table: str, language_ids: dict[str, int]) -> int:
     language_code = Path(table).stem
     if language_code not in language_ids:
-        raise ValueError(f'В таблице languages.csv нет языка, у которого ISO639P3code равен {language_code}')
+        raise ValueError(
+            'В таблице languages.csv нет языка, у которого '
+            f'ISO639P3code равен {language_code}'
+        )
     return language_ids[language_code]
 
 
@@ -84,6 +98,7 @@ def load_state():
         'frames_concepticon': load_frames_concepticon(),
         'existing_groups': load_existing_groups(),
         'existing_lexemes': load_existing_lexemes(),
+        'existing_lexeme_meanings': load_existing_lexeme_meanings(),
         'groups': {},
         'lexemes': [],
         'lexeme_meaning': [],
@@ -94,23 +109,38 @@ def load_state():
 
 
 def get_column_ids(header: list[str], table: str):
+    normalized_header = {
+        normalize_column_name(column): index
+        for index, column in enumerate(header)
+    }
     meanings = [
         'перф.EP', 'перф.EMP', 'перф.ES', 'перф.Q', 'перф.P', 'перф.P2', 'перф.MP', 'перф.S',
         'имперф.P', 'имперф.P2', 'имперф.MP', 'имперф.S',
     ]
     required_columns = ['Фрейм', 'Значение', 'Форма']
-    missing_columns = [column for column in required_columns if column not in header]
+    missing_columns = [column for column in required_columns if column not in normalized_header]
     if missing_columns:
-        print(f'Пропускаю {table}, так как в ней нет обязательных колонок {", ".join(missing_columns)}')
+        print(
+            f'Пропускаю {table}, так как в ней нет обязательных колонок '
+            f'{", ".join(missing_columns)}'
+        )
         return None
 
     return {
-        'frame': header.index('Фрейм'),
-        'russian': header.index('Значение'),
-        'term': header.index('А-группа') if 'А-группа' in header else None,
-        'lexeme': header.index('Форма'),
-        'meanings': [(meaning_id, header.index(meaning)) for meaning_id, meaning in enumerate(meanings) if meaning in header],
+        'frame': normalized_header['Фрейм'],
+        'russian': normalized_header['Значение'],
+        'term': normalized_header.get('А-группа'),
+        'lexeme': normalized_header['Форма'],
+        'meanings': [
+            (meaning_id, normalized_header[meaning])
+            for meaning_id, meaning in enumerate(meanings)
+            if meaning in normalized_header
+        ],
     }
+
+
+def normalize_column_name(column: str) -> str:
+    return re.sub(r'\s*\.\s*', '.', column.strip())
 
 
 def get_row_term(row: list[str], columns: dict) -> str:
@@ -152,21 +182,25 @@ def get_or_create_group_id(state: dict, frame_id: int, term: str, language_id: i
 
 def append_lexeme(state: dict, row: list[str], columns: dict, group_id: int):
     lexeme = row[columns['lexeme']].strip()
-    russian = row[columns['russian']].split()[0].split(',')[0]
+    russian = row[columns['russian']].strip()
     lexeme_key = (group_id, lexeme, russian)
     if lexeme_key in state['existing_lexemes']:
-        return False
-
-    lexeme_id = state['next_lexeme_id']
-    state['lexemes'].append((lexeme_id, group_id, lexeme, russian))
-    state['existing_lexemes'].add(lexeme_key)
+        lexeme_id = state['existing_lexemes'][lexeme_key]
+        created = False
+    else:
+        lexeme_id = state['next_lexeme_id']
+        state['lexemes'].append((lexeme_id, group_id, lexeme, russian))
+        state['existing_lexemes'][lexeme_key] = lexeme_id
+        state['next_lexeme_id'] += 1
+        created = True
 
     for meaning_id, column_id in columns['meanings']:
-        if row[column_id] == '1':
+        lexeme_meaning_key = (lexeme_id, meaning_id)
+        if row[column_id] == '1' and lexeme_meaning_key not in state['existing_lexeme_meanings']:
             state['lexeme_meaning'].append((lexeme_id, meaning_id))
+            state['existing_lexeme_meanings'].add(lexeme_meaning_key)
 
-    state['next_lexeme_id'] += 1
-    return True
+    return created
 
 
 def write_frames(frames: dict[str, int]):

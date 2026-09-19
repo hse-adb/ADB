@@ -6,11 +6,9 @@ from sqlalchemy import (
     Integer,
     Boolean,
     ForeignKey,
-    UniqueConstraint,
     Table
 )
 from sqlalchemy.orm import relationship, backref
-from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 
 from clld import interfaces
@@ -19,9 +17,6 @@ from clld.db.models import common
 
 from ADB import interfaces as adb_interfaces
 
-#-----------------------------------------------------------------------------
-# specialized common mapper classes
-#-----------------------------------------------------------------------------
 
 @implementer(interfaces.ILanguage)
 class Variety(CustomModelMixin, common.Language):
@@ -30,6 +25,7 @@ class Variety(CustomModelMixin, common.Language):
     glottocode = Column(Unicode)
     family_name = Column(String)
     family_level_id = Column(String)
+
 
 @implementer(adb_interfaces.IFrame)
 class Frame(Base):
@@ -46,6 +42,7 @@ class FrameConcepticon(Base):
     concepticon = Column(String)
     frame = relationship('Frame', backref=backref('concepticon_links'))
 
+
 @implementer(adb_interfaces.IGroup)
 class Group(Base):
     __tablename__ = 'group'
@@ -60,6 +57,7 @@ class Group(Base):
     def name(self):
         return self.term
 
+
 class Lexeme(Base):
     __tablename__ = 'lexeme'
     id = Column(String, unique=True, nullable=False)
@@ -69,11 +67,13 @@ class Lexeme(Base):
     group = relationship('Group', backref=backref('lexemes'))
     meanings = relationship('Meaning', secondary='lexeme_meaning', backref=backref('lexemes'))
 
+
 class Meaning(Base):
     __tablename__ = 'meaning'
     id = Column(String, unique=True, nullable=False)
     order = Column(Integer)
     name = Column(String)
+
 
 class Example(Base):
     __tablename__ = 'example'
@@ -87,12 +87,14 @@ class Example(Base):
     lgr_conformance = Column(String)
     grammaticality_judgement = Column(Boolean)
 
+
 lexeme_meaning = Table(
     'lexeme_meaning',
     Base.metadata,
     Column('lexeme_pk', Integer, ForeignKey('lexeme.pk')),
     Column('meaning_pk', Integer, ForeignKey('meaning.pk'))
 )
+
 
 class LexemeMeaningExample(Base):
     __tablename__ = 'lexeme_meaning_example'
@@ -106,4 +108,4 @@ class LexemeMeaningExample(Base):
 
     @property
     def position_list(self):
-        return self.position.split(";")
+        return self.position.split(";") if self.position else []

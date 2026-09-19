@@ -7,6 +7,18 @@ import ADB
 from ADB import models
 
 
+def optional_int(value):
+    return int(value) if value not in [None, ''] else None
+
+
+def list_value(value):
+    if value in [None, '']:
+        return []
+    if isinstance(value, str):
+        return [value]
+    return value
+
+
 def main(args):
     data = Data()
     ds = args.cldf
@@ -16,28 +28,25 @@ def main(args):
         ADB.__name__,
         id=ADB.__name__,
         domain='localhost',
-
-        publisher_name = "",
-        publisher_place = "",
-        publisher_url = "",
-        license = "http://creativecommons.org/licenses/by/4.0/",
-        jsondata = {
+        publisher_name='',
+        publisher_place='',
+        publisher_url='',
+        license='http://creativecommons.org/licenses/by/4.0/',
+        jsondata={
             'license_icon': 'cc-by.png',
-            'license_name': 'Creative Commons Attribution 4.0 International License'},
-
+            'license_name': 'Creative Commons Attribution 4.0 International License',
+        },
     )
 
-
-    contrib = data.add(
+    data.add(
         common.Contribution,
         None,
         id='cldf',
-        name=ds.properties.get('dc:title'), #args.cldf.properties.get('dc:title'),
-        description=ds.properties.get('dc:bibliographicCitation'), #args.cldf.properties.get('dc:bibliographicCitation'),
+        name=ds.properties.get('dc:title'),
+        description=ds.properties.get('dc:bibliographicCitation'),
     )
 
     for lang in ds['LanguageTable'].iterdicts():
-            #in args.cldf.iter_rows('LanguageTable', 'id', 'glottocode', 'name', 'latitude', 'longitude'):
         data.add(
             models.Variety,
             lang['language_id'],
@@ -50,13 +59,13 @@ def main(args):
             family_name=lang['Family_name'],
             family_level_id=lang['Family_level_ID'],
         )
-    
+
     for row in ds['frames.csv'].iterdicts():
         data.add(
             models.Frame,
             row['frame_id'],
             id=row['frame_id'],
-            frame=row['frame']
+            frame=row['frame'],
         )
 
     try:
@@ -64,17 +73,16 @@ def main(args):
     except KeyError:
         frame_concepticon_rows = []
 
-    for i, row in enumerate(frame_concepticon_rows, start=1):
+    for row in frame_concepticon_rows:
         frame = data['Frame'][row['frame_id']]
-        concepticon_id = row.get('concepticon_id')
         data.add(
             models.FrameConcepticon,
             row.get('concepticon_id'),
             frame=frame,
-            concepticon_id=int(concepticon_id) if concepticon_id not in [None, ''] else None,
+            concepticon_id=optional_int(row.get('concepticon_id')),
             concepticon=row.get('concepticon'),
         )
-    
+
     for row in ds['groups.csv'].iterdicts():
         variety = data['Variety'][row['language_id']]
         frame = data['Frame'][row['frame_id']]
@@ -86,7 +94,7 @@ def main(args):
             frame=frame,
             term=row['term'],
         )
-    
+
     for row in ds['lexemes.csv'].iterdicts():
         group = data['Group'][row['group_id']]
         data.add(
@@ -97,17 +105,16 @@ def main(args):
             lexeme=row['lexeme'],
             russian=row.get('russian'),
         )
-    
+
     for row in ds['meanings.csv'].iterdicts():
-        order = row.get('order')
         data.add(
             models.Meaning,
             row['meaning_id'],
             id=row['meaning_id'],
-            order=int(order) if order not in [None, ''] else None,
+            order=optional_int(row.get('order')),
             name=row['meaning'],
         )
-    
+
     for row in ds.iter_rows('ExampleTable'):
         data.add(
             models.Example,
@@ -120,10 +127,9 @@ def main(args):
             translated_text=row['translated_text'],
             meta_language_pk=row['meta_language_id'] or None,
             lgr_conformance=row['lgr_conformance'],
-            grammaticality_judgement=row['grammaticality_judgement']
+            grammaticality_judgement=row['grammaticality_judgement'],
         )
 
-    # lexeme-to-meanings relation
     for row in ds['lexeme_meaning.csv'].iterdicts():
         lexeme_id = row.get('lexeme_id')
         meaning_id = row.get('meaning_id')
@@ -133,7 +139,6 @@ def main(args):
         meaning = data['Meaning'][meaning_id]
         lexeme.meanings.append(meaning)
 
-    # examples-for-lexeme-meanings-pairs
     for row in ds['lexeme_meaning_example.csv'].iterdicts():
         lexeme_id = row.get('lexeme_id')
         meaning_id = row.get('meaning_id')
@@ -143,16 +148,16 @@ def main(args):
         data.add(
             models.LexemeMeaningExample,
             '.'.join((lexeme_id, meaning_id, example_id)),
-            lexeme = data['Lexeme'][lexeme_id],
-            meaning = data['Meaning'][meaning_id],
-            example = data['Example'][example_id],
-            position = ';'.join(row['position'])
+            lexeme=data['Lexeme'][lexeme_id],
+            meaning=data['Meaning'][meaning_id],
+            example=data['Example'][example_id],
+            position=';'.join(list_value(row.get('position'))),
         )
-    
+
     if ds.bibpath:
         for rec in bibtex.Database.from_file(ds.bibpath, lowercase=True):
             data.add(common.Source, rec.id, _obj=bibtex2source(rec))
-    
+
     DBSession.flush()
 
 
