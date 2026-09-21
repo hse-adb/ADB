@@ -66,11 +66,15 @@ def strip_build_query(url: str) -> str:
     ))
 
 
-def with_static(path: str) -> str:
+def with_static(url: str) -> str:
     """
-    Add ?static=1 to a canonical root-relative URL.
+    Add ?static=1 to a canonical application URL.
     """
-    parts = urlsplit(path)
+    parts = urlsplit(url)
+
+    path = normalize_page_path(
+        parts.path
+    )
 
     query = [
         (key, value)
@@ -84,9 +88,9 @@ def with_static(path: str) -> str:
     query.append(("static", "1"))
 
     return urlunsplit((
-        "",
-        "",
-        parts.path or "/",
+        parts.scheme,
+        parts.netloc,
+        path,
         urlencode(query),
         "",
     ))
@@ -137,20 +141,31 @@ def is_probable_html(url: str) -> bool:
     return suffix not in NON_HTML_SUFFIXES
 
 
-def html_output_path(public_url: str) -> Path:
+def html_output_dir(public_url: str) -> Path:
     """
-    Map a page URL to:
+    Filesystem directory corresponding to an HTML page.
 
-        /                  -> static-site/index.html
-        /languages        -> static-site/languages/index.html
-        /languages/abc    -> static-site/languages/abc/index.html
+    /                  -> static-site/
+    /languages         -> static-site/languages/
+    /frames/1          -> static-site/frames/1/
     """
     path = urlsplit(public_url).path.strip("/")
 
     if not path:
-        return OUTPUT / "index.html"
+        return OUTPUT
 
-    return OUTPUT / path / "index.html"
+    return OUTPUT / path
+
+
+def html_output_path(public_url: str) -> Path:
+    """
+    Map a page URL to:
+
+        /                 -> static-site/index.html
+        /languages        -> static-site/languages/index.html
+        /languages/abc    -> static-site/languages/abc/index.html
+    """
+    return html_output_dir(public_url) / "index.html"
 
 
 def resource_output_path(url: str) -> Path:
@@ -191,34 +206,81 @@ def relative_link(
     return rel
 
 
+def relative_page_link(
+    source_file: Path,
+    public_url: str,
+    fragment: str = "",
+) -> str:
+    """
+    Link to the directory URL of an HTML page rather than
+    to its index.html file.
+    """
+    target_dir = html_output_dir(public_url)
+
+    rel = os.path.relpath(
+        target_dir,
+        start=source_file.parent,
+    ).replace(os.sep, "/")
+
+    if rel == ".":
+        rel = "./"
+    elif not rel.endswith("/"):
+        rel += "/"
+
+    if fragment:
+        rel += f"#{fragment}"
+
+    return rel
+
+
+def normalize_page_path(path: str) -> str:
+    """
+    Canonical form for application page URLs.
+
+    Pyramid routes in this app use paths without trailing slashes,
+    while the static site represents pages as directories.
+    """
+    if not path:
+        return "/"
+
+    if path != "/":
+        path = path.rstrip("/")
+
+    return path or "/"
+
+
 def canonical_public_url(
     discovered_url: str,
     origin: str,
 ) -> str | None:
     """
-    Convert an arbitrary same-origin URL into the canonical
-    site URL: root-relative, no fragment, no ?static=1.
+    Convert an arbitrary href into the canonical URL used by
+    the crawler.
 
-    Examples:
-
-        /languages
-            -> /languages
-
-        http://127.0.0.1:6543/languages?static=1
-            -> /languages
-
-        /frames/1/language/2#foo
-            -> /frames/1/language/2
+    The canonical URL:
+      - is same-origin
+      - has no ?static=1
+      - has no trailing slash (except /)
+      - retains genuine query parameters
     """
     absolute = urljoin(
         origin.rstrip("/") + "/",
         discovered_url,
     )
 
-    if not is_same_origin(absolute, origin):
+    if not is_same_origin(
+        absolute,
+        origin,
+    ):
         return None
 
-    parts = urlsplit(absolute)
+    parts = urlsplit(
+        remove_fragment(absolute)
+    )
+
+    path = normalize_page_path(
+        parts.path
+    )
 
     query = [
         (key, value)
@@ -230,9 +292,9 @@ def canonical_public_url(
     ]
 
     return urlunsplit((
-        "",
-        "",
-        parts.path or "/",
+        parts.scheme,
+        parts.netloc,
+        path,
         urlencode(query),
         "",
     ))
@@ -240,6 +302,7 @@ def canonical_public_url(
 
 def extract_normal_links(
     page,
+    current_public_url: str,
     origin: str,
 ) -> set[str]:
     """
@@ -248,6 +311,17 @@ def extract_normal_links(
     Only <a href> links are treated as crawl targets.
     Resources such as <link href>, <script src>, <img src>, etc.
     are handled separately by the asset-saving code.
+
+    Relative links are resolved against the URL that the page
+    will have in the static site, e.g.
+
+        /frames
+            -> /frames/
+
+    so that:
+
+        href="9/language/1/"
+            -> /frames/9/language/1/
     """
     result = set()
 
@@ -258,9 +332,34 @@ def extract_normal_links(
         "html.parser",
     )
 
+    # The generated static page lives at:
+    #
+    #   /frames/index.html
+    #
+    # and therefore relative links must be resolved as if the
+    # page URL were /frames/.
+    current_path = urlsplit(
+        current_public_url
+    ).path
+
+    if not current_path.endswith("/"):
+        current_path += "/"
+
+    static_base = (
+        origin.rstrip("/")
+        + current_path
+    )
+
     for tag in soup.find_all("a", href=True):
+        href = tag["href"]
+
+        absolute = urljoin(
+            static_base,
+            href,
+        )
+
         public_url = canonical_public_url(
-            tag["href"],
+            absolute,
             origin,
         )
 
@@ -358,6 +457,7 @@ DATATABLE_LINK_SCRIPT = r"""
 
 def extract_datatable_links(
     page,
+    current_public_url: str,
     origin: str,
 ) -> set[str]:
     """
@@ -371,11 +471,28 @@ def extract_datatable_links(
     except Exception:
         return set()
 
+    current_path = urlsplit(
+        current_public_url
+    ).path
+
+    if not current_path.endswith("/"):
+        current_path += "/"
+
+    static_base = (
+        origin.rstrip("/")
+        + current_path
+    )
+
     result = set()
 
     for raw_url in raw_urls:
-        public_url = canonical_public_url(
+        absolute = urljoin(
+            static_base,
             raw_url,
+        )
+
+        public_url = canonical_public_url(
+            absolute,
             origin,
         )
 
@@ -455,15 +572,22 @@ def rewrite_html(
                 remove_fragment(absolute)
             )
 
-            target_file = output_path_for_url(
-                public_url
-            )
+            if is_probable_html(public_url):
+                tag[attr] = relative_page_link(
+                    source_file,
+                    public_url,
+                    parsed.fragment,
+                )
+            else:
+                target_file = resource_output_path(
+                    public_url
+                )
 
-            tag[attr] = relative_link(
-                source_file,
-                target_file,
-                parsed.fragment,
-            )
+                tag[attr] = relative_link(
+                    source_file,
+                    target_file,
+                    parsed.fragment,
+                )
 
     return str(soup)
 
@@ -856,6 +980,7 @@ class StaticBuilder:
                 # Normal DOM links.
                 links = extract_normal_links(
                     page,
+                    final_public_url,
                     self.origin,
                 )
 
@@ -863,6 +988,7 @@ class StaticBuilder:
                 # DataTables rows.
                 links |= extract_datatable_links(
                     page,
+                    final_public_url,
                     self.origin,
                 )
 

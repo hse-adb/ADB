@@ -6,6 +6,12 @@ from clld.web.util.htmllib import HTML, literal
 from clld.web.datatables.language import Languages as CLLDLanguages
 from clld.web.datatables.value import Values as CLLDValues
 from clld.web.datatables.source import Sources as CLLDSources
+from urllib.parse import (
+    urljoin,
+    urlsplit,
+    urlunsplit,
+)
+import posixpath
 
 from ADB import models
 from ADB.helpers import collect_group_meanings, format_group_meanings, format_meanings
@@ -17,6 +23,166 @@ class StaticDataTableMixin(DataTable):
     When ?static=1 is present, turn the normal CLLD server-side
     DataTable into a client-side DataTable containing every row.
     """
+
+    def _static_source_dir(self):
+        """
+        Directory corresponding to the public URL of the current page.
+
+        /frames          -> /frames
+        /frames/1        -> /frames/1
+        /                -> /
+        """
+        path = self.req.path.rstrip("/")
+        return path or "/"
+
+    def _staticize_url(self, value):
+        """
+        Convert an internal application URL into a relative static-site URL.
+
+        External URLs are preserved.
+
+        Examples on /frames:
+
+            https://example.org/frames/1
+                -> 1/
+
+            /languages/1
+                -> ../languages/1/
+
+        """
+        if not value:
+            return value
+
+        # Fragment-only links such as #map must remain unchanged.
+        if value.startswith("#"):
+            return value
+
+        application_url = self.req.application_url.rstrip("/")
+
+        absolute = urljoin(
+            application_url + "/",
+            value,
+        )
+
+        parsed = urlsplit(absolute)
+        app = urlsplit(application_url)
+
+        # Don't rewrite external URLs.
+        if (
+            parsed.scheme != app.scheme
+            or parsed.netloc != app.netloc
+        ):
+            return value
+
+        source_dir = self._static_source_dir()
+
+        target_path = parsed.path or "/"
+
+        # A URL without a file extension is an HTML page.
+        # Represent it as a directory URL in the static site.
+        is_page = not posixpath.splitext(
+            posixpath.basename(target_path)
+        )[1]
+
+        if is_page:
+            target_dir = target_path.rstrip("/") or "/"
+
+            if target_dir == "/":
+                rel = posixpath.relpath(
+                    "/",
+                    start=source_dir,
+                )
+            else:
+                rel = posixpath.relpath(
+                    target_dir,
+                    start=source_dir,
+                )
+
+            if rel == ".":
+                rel = "."
+
+            rel += "/" if not rel.endswith("/") else ""
+
+            result = rel
+
+        else:
+            result = posixpath.relpath(
+                target_path,
+                start=source_dir,
+            )
+
+        if parsed.query:
+            result += "?" + parsed.query
+
+        if parsed.fragment:
+            result += "#" + parsed.fragment
+
+        return result
+
+    def _staticize_html(self, value):
+        """
+        Rewrite href/src attributes inside a DataTable cell
+        or column title.
+        """
+        if not value:
+            return value
+
+        text = str(value)
+
+        if (
+            "<" not in text
+            or "href" not in text and "src" not in text
+        ):
+            return value
+        
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            text,
+            "html.parser",
+        )
+
+        for tag in soup.find_all(True):
+            for attr in ("href", "src"):
+                if not tag.has_attr(attr):
+                    continue
+
+                tag[attr] = self._staticize_url(
+                    tag[attr]
+                )
+
+        return str(soup)
+
+    def _staticize_options(self, value, key=None):
+        """
+        Recursively rewrite HTML strings in the DataTable
+        JavaScript configuration.
+        """
+        if key == "aaData":
+            return value
+        
+        if isinstance(value, dict):
+            return {
+                key: self._staticize_options(val, key=key)
+                for key, val in value.items()
+            }
+
+        if isinstance(value, list):
+            return [
+                self._staticize_options(item)
+                for item in value
+            ]
+
+        if isinstance(value, tuple):
+            return tuple(
+                self._staticize_options(item)
+                for item in value
+            )
+
+        if isinstance(value, str):
+            return self._staticize_html(value)
+
+        return value
 
     def get_default_options(self):
         options = super().get_default_options()
@@ -44,7 +210,7 @@ class StaticDataTableMixin(DataTable):
         # DataTables' old API expects aaData to be an array
         # of rows, with one value per column.
         data = [
-            [col.format(item) for col in self.cols] # TODO: ? str(col.format(item))
+            [self._staticize_html(col.format(item)) for col in self.cols]
             for item in items
         ]
 
@@ -53,6 +219,10 @@ class StaticDataTableMixin(DataTable):
         options["bProcessing"] = False
         options["aaData"] = data
         options.pop("sAjaxSource", None)
+
+        # This also fixes links embedded in column titles,
+        # such as the language names in the Frames table.
+        options = self._staticize_options(options)
 
         return options
 
