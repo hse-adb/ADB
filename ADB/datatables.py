@@ -3,10 +3,57 @@ from sqlalchemy import and_, func, distinct, cast, Integer
 from clld.web.datatables.base import DataTable, Col
 from clld.web.util.helpers import link
 from clld.web.util.htmllib import HTML, literal
+from clld.web.datatables.language import Languages as CLLDLanguages
+from clld.web.datatables.value import Values as CLLDValues
 
 from ADB import models
 from ADB.helpers import collect_group_meanings, format_group_meanings, format_meanings
 from clld.db.meta import DBSession
+
+
+class StaticDataTableMixin(DataTable):
+    """
+    When ?static=1 is present, turn the normal CLLD server-side
+    DataTable into a client-side DataTable containing every row.
+    """
+
+    def get_default_options(self):
+        options = super().get_default_options()
+
+        if self.req.params.get("static") != "1":
+            return options
+
+        # Get ALL active records, applying the table's normal
+        # base_query() so joins, eager loading and constraints
+        # defined by the concrete DataTable are preserved.
+        query = self.base_query(
+            DBSession.query(self.db_model())
+            .filter(self.db_model().active == True)
+        )
+
+        # Reproduce the ordering that the server-side DataTable would use.
+        query = query.order_by(*(
+            self.default_order()
+            if isinstance(self.default_order(), (tuple, list))
+            else (self.default_order(),)
+        ))
+
+        items = query.all()
+
+        # DataTables' old API expects aaData to be an array
+        # of rows, with one value per column.
+        data = [
+            [col.format(item) for col in self.cols] # TODO: ? str(col.format(item))
+            for item in items
+        ]
+
+        # Switch from server-side to client-side processing.
+        options["bServerSide"] = False
+        options["bProcessing"] = False
+        options["aaData"] = data
+        options.pop("sAjaxSource", None)
+
+        return options
 
 
 class IntegerIdCol(Col):
@@ -14,7 +61,7 @@ class IntegerIdCol(Col):
         return cast(self.model_col, Integer)
 
 
-class Frames(DataTable):
+class Frames(StaticDataTableMixin, DataTable):
     @property
     def languages(self):
         if not hasattr(self, '_languages'):
@@ -118,7 +165,7 @@ class Frames(DataTable):
         return cols
 
 
-class Languagegroups(DataTable):
+class Languagegroups(StaticDataTableMixin, DataTable):
     __constraints__ = [models.Variety]
 
     def _group_values(self, group):
@@ -187,6 +234,16 @@ class Languagegroups(DataTable):
         ]
 
 
+class StaticLanguages(StaticDataTableMixin, CLLDLanguages):
+    pass
+
+
+class StaticValues(StaticDataTableMixin, CLLDValues):
+    pass
+
+
 def includeme(config):
     config.register_datatable('frames', Frames)
     config.register_datatable('groups', Languagegroups)
+    config.register_datatable('languages', StaticLanguages)
+    config.register_datatable('values', StaticValues)
