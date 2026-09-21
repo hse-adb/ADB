@@ -114,9 +114,9 @@ class Frames(StaticDataTableMixin, DataTable):
             return HTML.a(
                 literal(value),
                 href=self.dt.req.route_url(
-                    'frame',
+                    'frame_language',
                     id=item.id,
-                    _query={'language': self.language.id},
+                    language=self.language.id,
                 ),
             )
 
@@ -210,9 +210,9 @@ class Languagegroups(StaticDataTableMixin, DataTable):
                 format=lambda item: HTML.a(
                     item.frame.frame,
                     href=self.req.route_url(
-                        'frame',
+                        'frame_language',
                         id=item.frame.id,
-                        _query={'language': item.variety.id},
+                        language=item.variety.id,
                     ),
                 ),
             ),

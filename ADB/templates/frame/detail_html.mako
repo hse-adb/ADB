@@ -30,7 +30,7 @@ languages = sorted(
     {group.variety_pk: group.variety for group in frame_groups}.values(),
     key=lambda item: item.name,
 )
-language_id = req.params.get('language')
+language_id = req.matchdict.get('language') or req.params.get('language')
 language = next((item for item in languages if item.id == language_id), None)
 
 language_group_meanings = {}
@@ -117,7 +117,7 @@ groups = [group for group in frame_groups if language is not None and group.vari
       % for variety in languages:
         <tr>
           <td>
-            <a href="${req.route_url('frame', id=ctx.id, _query={'language': variety.id})}">${variety.name}</a>
+            <a href="${req.route_url('frame_language', id=ctx.id, language=variety.id)}">${variety.name}</a>
           </td>
           <td>${literal(format_group_meanings(language_group_meanings.get(variety.id, [])))}</td>
         </tr>
