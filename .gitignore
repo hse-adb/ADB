@@ -1,5 +1,7 @@
 development.ini
 db.sqlite
+static-site
+
 *.py[cod]
 *.komodoproject
 

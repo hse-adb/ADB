@@ -5,6 +5,7 @@ from clld.web.util.helpers import link
 from clld.web.util.htmllib import HTML, literal
 from clld.web.datatables.language import Languages as CLLDLanguages
 from clld.web.datatables.value import Values as CLLDValues
+from clld.web.datatables.source import Sources as CLLDSources
 
 from ADB import models
 from ADB.helpers import collect_group_meanings, format_group_meanings, format_meanings
@@ -236,9 +237,9 @@ class Languagegroups(StaticDataTableMixin, DataTable):
 
 class StaticLanguages(StaticDataTableMixin, CLLDLanguages):
     pass
-
-
 class StaticValues(StaticDataTableMixin, CLLDValues):
+    pass
+class StaticSources(StaticDataTableMixin, CLLDSources):
     pass
 
 
@@ -247,3 +248,4 @@ def includeme(config):
     config.register_datatable('groups', Languagegroups)
     config.register_datatable('languages', StaticLanguages)
     config.register_datatable('values', StaticValues)
+    config.register_datatable('sources', StaticSources)
