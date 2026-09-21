@@ -540,6 +540,41 @@ def rewrite_css(
     )
 
 
+def reset_datatables(page):
+    """
+    Destroy the live DataTables instances before taking the HTML
+    snapshot.
+
+    This removes the generated DataTables wrapper, info text,
+    pagination controls, etc., while leaving the original table
+    markup and the initialization <script> in the document.
+
+    On the generated static site, that script will therefore run
+    exactly once.
+    """
+    page.evaluate(
+        """
+        () => {
+            if (!window.CLLD || !CLLD.DataTables) {
+                return;
+            }
+
+            Object.keys(CLLD.DataTables).forEach((eid) => {
+                try {
+                    CLLD.DataTables[eid].fnDestroy();
+                } catch (e) {
+                    console.warn(
+                        "Could not destroy DataTable",
+                        eid,
+                        e
+                    );
+                }
+            });
+        }
+        """
+    )
+
+
 class StaticBuilder:
     def __init__(self, origin: str):
         self.origin = origin.rstrip("/")
@@ -832,6 +867,10 @@ class StaticBuilder:
                 )
 
                 self.enqueue(links)
+
+                # Remove the runtime-generated DataTables DOM before saving.
+                # The original initialization script remains in the page.
+                reset_datatables(page)
 
                 html = page.content()
 
