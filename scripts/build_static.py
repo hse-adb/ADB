@@ -525,6 +525,55 @@ def resolve_site_url(
     )
 
 
+def is_asset_reference(tag, attr: str) -> bool:
+    """
+    Determine whether an HTML URL attribute refers to a static
+    resource rather than another HTML page.
+
+    Some CLLD resources, notably /_js, have no filename extension,
+    so URL suffix detection is not sufficient.
+    """
+    name = tag.name.lower()
+
+    if name == "script" and attr == "src":
+        return True
+
+    if name == "link" and attr == "href":
+        rel = {
+            x.lower()
+            for x in tag.get("rel", [])
+        }
+
+        if rel & {
+            "stylesheet",
+            "icon",
+            "shortcut",
+            "apple-touch-icon",
+            "manifest",
+            "preload",
+            "modulepreload",
+            "mask-icon",
+        }:
+            return True
+
+    if name in {
+        "img",
+        "source",
+        "audio",
+        "video",
+        "iframe",
+        "embed",
+        "object",
+    } and attr in {
+        "src",
+        "poster",
+        "data",
+    }:
+        return True
+
+    return False
+
+
 def rewrite_html(
     html: str,
     current_public_url: str,
@@ -572,12 +621,24 @@ def rewrite_html(
                 remove_fragment(absolute)
             )
 
-            if is_probable_html(public_url):
+            if is_asset_reference(tag, attr):
+                target_file = resource_output_path(
+                    public_url
+                )
+
+                tag[attr] = relative_link(
+                    source_file,
+                    target_file,
+                    parsed.fragment,
+                )
+
+            elif is_probable_html(public_url):
                 tag[attr] = relative_page_link(
                     source_file,
                     public_url,
                     parsed.fragment,
                 )
+
             else:
                 target_file = resource_output_path(
                     public_url
@@ -646,7 +707,7 @@ def rewrite_css(
             remove_fragment(absolute)
         )
 
-        target_file = output_path_for_url(
+        target_file = resource_output_path(
             public_url
         )
 
@@ -663,41 +724,129 @@ def rewrite_css(
         css,
     )
 
+def rewrite_saved_css(output_dir: Path, origin):
+    for css_file in output_dir.rglob("*.css"):
+        rel = css_file.relative_to(output_dir).as_posix()
+        public_url = "/" + rel
+
+        css = css_file.read_text(encoding="utf-8")
+
+        css = rewrite_css(
+            css,
+            public_url,
+            origin,
+        )
+
+        css_file.write_text(
+            css,
+            encoding="utf-8",
+        )
 
 def reset_datatables(page):
     """
-    Destroy the live DataTables instances before taking the HTML
-    snapshot.
+    Destroy every currently initialized DataTable so that the
+    saved HTML contains the original table markup.
 
-    This removes the generated DataTables wrapper, info text,
-    pagination controls, etc., while leaving the original table
-    markup and the initialization <script> in the document.
-
-    On the generated static site, that script will therefore run
-    exactly once.
+    The initialization script remains in the HTML and will run
+    exactly once when the static page is subsequently opened.
     """
-    page.evaluate(
+    result = page.evaluate(
         """
         () => {
-            if (!window.CLLD || !CLLD.DataTables) {
-                return;
+            const $ = window.jQuery;
+
+            if (!$ || !$.fn || !$.fn.dataTable) {
+                return {
+                    found: false,
+                    tables: 0,
+                    destroyed: 0,
+                };
             }
 
-            Object.keys(CLLD.DataTables).forEach((eid) => {
+            const tables = Array.from(
+                document.querySelectorAll('table')
+            );
+
+            let destroyed = 0;
+
+            tables.forEach((table) => {
                 try {
-                    CLLD.DataTables[eid].fnDestroy();
-                } catch (e) {
+                    let initialized = false;
+
+                    // DataTables 1.10+
+                    if (
+                        typeof $.fn.dataTable.isDataTable === 'function'
+                    ) {
+                        initialized =
+                            $.fn.dataTable.isDataTable(table);
+                    }
+
+                    // Older DataTables versions.
+                    if (
+                        !initialized &&
+                        typeof $.fn.dataTable.fnIsDataTable === 'function'
+                    ) {
+                        initialized =
+                            $.fn.dataTable.fnIsDataTable(table);
+                    }
+
+                    // Last-resort check for the legacy global settings
+                    // collection.
+                    if (
+                        !initialized &&
+                        Array.isArray($.fn.dataTableSettings)
+                    ) {
+                        initialized =
+                            $.fn.dataTableSettings.some(
+                                settings =>
+                                    settings.nTable === table
+                            );
+                    }
+
+                    if (!initialized) {
+                        return;
+                    }
+
+                    // Use the legacy API where available, since CLLD
+                    // uses the legacy DataTables API.
+                    if (
+                        typeof $(table).dataTable === 'function'
+                    ) {
+                        $(table)
+                            .dataTable()
+                            .fnDestroy();
+                    } else if (
+                        typeof $(table).DataTable === 'function'
+                    ) {
+                        $(table)
+                            .DataTable()
+                            .destroy();
+                    }
+
+                    destroyed += 1;
+
+                } catch (error) {
                     console.warn(
-                        "Could not destroy DataTable",
-                        eid,
-                        e
+                        'Could not destroy DataTable',
+                        table,
+                        error
                     );
                 }
             });
+
+            return {
+                found: true,
+                tables: tables.length,
+                destroyed: destroyed,
+            };
         }
         """
     )
 
+    print(
+        "DataTables reset:",
+        result,
+    )
 
 class StaticBuilder:
     def __init__(self, origin: str):
@@ -834,34 +983,47 @@ class StaticBuilder:
 
         target.write_bytes(body)
 
-    def discover_assets_from_page(
-        self,
-        page,
-    ):
-        """
-        Explicitly save stylesheets/scripts referred to from HTML.
-        Network interception already catches most of these, but
-        doing this too makes the build less dependent on browser
-        loading behavior.
-        """
+    def discover_assets_from_page(self, page):
         urls = page.evaluate(
             """
             () => {
                 const result = [];
 
                 document.querySelectorAll(
-                    'link[href], script[src], img[src], source[src], video[poster]'
+                    'link[href], script[src], img[src], ' +
+                    'source[src], audio[src], video[src], ' +
+                    'video[poster], iframe[src], embed[src], object[data]'
                 ).forEach((element) => {
                     if (element.href) {
-                        result.push(element.href);
+                        result.push({
+                            url: element.href,
+                            kind: element.tagName.toLowerCase(),
+                            attr: 'href'
+                        });
                     }
 
                     if (element.src) {
-                        result.push(element.src);
+                        result.push({
+                            url: element.src,
+                            kind: element.tagName.toLowerCase(),
+                            attr: 'src'
+                        });
                     }
 
                     if (element.poster) {
-                        result.push(element.poster);
+                        result.push({
+                            url: element.poster,
+                            kind: element.tagName.toLowerCase(),
+                            attr: 'poster'
+                        });
+                    }
+
+                    if (element.data) {
+                        result.push({
+                            url: element.data,
+                            kind: element.tagName.toLowerCase(),
+                            attr: 'data'
+                        });
                     }
                 });
 
@@ -870,12 +1032,33 @@ class StaticBuilder:
             """
         )
 
-        for url in urls:
-            if not is_probable_html(url):
-                self.save_explicit_asset(
-                    page,
-                    url,
+        for item in urls:
+            url = item["url"]
+
+            if is_probable_html(url):
+                # For things with page-like URLs, only the known
+                # resource-bearing elements should get downloaded.
+                is_asset = (
+                    item["kind"] == "script"
+                    or item["kind"] == "link"
+                    or item["kind"] in {
+                        "img",
+                        "source",
+                        "audio",
+                        "video",
+                        "iframe",
+                        "embed",
+                        "object",
+                    }
                 )
+
+                if not is_asset:
+                    continue
+
+            self.save_explicit_asset(
+                page,
+                url,
+            )
 
     def enqueue(
         self,
@@ -1021,6 +1204,11 @@ class StaticBuilder:
                 )
 
             browser.close()
+
+        rewrite_saved_css(
+            OUTPUT,
+            self.origin,
+        )
 
         # GitHub Pages: bypass Jekyll processing.
         (
