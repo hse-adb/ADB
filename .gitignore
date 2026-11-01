@@ -1,5 +1,7 @@
 development.ini
 db.sqlite
+static-site
+
 *.py[cod]
 *.komodoproject
 
@@ -39,3 +41,4 @@ nosetests.xml
 
 venv
 .DS_store
+.vscode

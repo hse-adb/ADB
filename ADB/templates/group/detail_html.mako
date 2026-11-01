@@ -11,7 +11,7 @@ lexeme_meaning_examples = [example for lexeme in lexemes for example in lexeme.e
 %>
 
 <h2>
-  <a href="${req.route_url('frame', id=ctx.frame.id, _query={'language': ctx.variety.id})}">${ctx.term}</a>
+  <a href="${req.route_url('frame_language', id=ctx.frame.id, language=ctx.variety.id)}">${ctx.term}</a>
 </h2>
 
 <p>
